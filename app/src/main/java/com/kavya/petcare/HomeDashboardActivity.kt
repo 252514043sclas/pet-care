@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,11 +47,16 @@ import com.kavya.petcare.ui.theme.PetCareTheme
 import kotlinx.coroutines.launch
 
 class HomeDashboardActivity : ComponentActivity() {
+
+    private lateinit var viewModel: PetViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        viewModel = PetViewModel.getShared(this)
         setContent {
             PetCareTheme {
                 MainSlidingDashboardScreen(
+                    viewModel = viewModel,
                     onExitApp = { finish() },
                     onNavigatePhotoScan = { startActivity(Intent(this, PhotoScanActivity::class.java)) },
                     onNavigateSymptomSelection = { startActivity(Intent(this, SymptomSelectionActivity::class.java)) },
@@ -67,11 +73,19 @@ class HomeDashboardActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        if (::viewModel.isInitialized) {
+            viewModel.refreshDashboard()
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainSlidingDashboardScreen(
+    viewModel: PetViewModel,
     onExitApp: () -> Unit,
     onNavigatePhotoScan: () -> Unit,
     onNavigateSymptomSelection: () -> Unit,
@@ -136,7 +150,6 @@ fun MainSlidingDashboardScreen(
         Scaffold(
             containerColor = Color(0xFFF6F8F3),
             bottomBar = {
-                // Premium Floating Bottom Bar with Animated Indicator
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -153,7 +166,13 @@ fun MainSlidingDashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val tabLabels = listOf("Home", "Health", "Diet", "Care", "Profile")
-                        val tabIcons = listOf(Icons.Default.Home, Icons.Default.Favorite, Icons.Default.DateRange, Icons.Default.Notifications, Icons.Default.Person)
+                        val tabIcons = listOf(
+                            Icons.Default.Home,
+                            Icons.Default.Favorite,
+                            Icons.Default.DateRange,
+                            Icons.Default.Notifications,
+                            Icons.Default.Person
+                        )
 
                         for (index in 0..4) {
                             val isSelected = pagerState.currentPage == index
@@ -209,6 +228,7 @@ fun MainSlidingDashboardScreen(
             ) { page ->
                 when (page) {
                     0 -> HomeTabScreen(
+                        viewModel = viewModel,
                         onNavigateHealth = { coroutineScope.launch { pagerState.animateScrollToPage(1) } },
                         onNavigateDiet = { coroutineScope.launch { pagerState.animateScrollToPage(2) } },
                         onNavigateGrooming = { coroutineScope.launch { pagerState.animateScrollToPage(3) } },
@@ -231,6 +251,7 @@ fun MainSlidingDashboardScreen(
                         onNavigateGuides = onNavigateGuides
                     )
                     4 -> ProfileTabScreen(
+                        viewModel = viewModel,
                         onAddPet = onAddPet,
                         onNavigateProfile = onNavigateProfile
                     )
@@ -242,12 +263,16 @@ fun MainSlidingDashboardScreen(
 
 @Composable
 fun HomeTabScreen(
+    viewModel: PetViewModel,
     onNavigateHealth: () -> Unit,
     onNavigateDiet: () -> Unit,
     onNavigateGrooming: () -> Unit,
     onNavigateProfile: () -> Unit,
     onAddPet: () -> Unit
 ) {
+    val activePet by viewModel.activePet.collectAsState()
+    val reminders by viewModel.reminders.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -256,7 +281,6 @@ fun HomeTabScreen(
     ) {
         Spacer(Modifier.height(8.dp))
 
-        // Modern Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -283,7 +307,6 @@ fun HomeTabScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        // Premium Active Pet Card with Gradient
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -333,8 +356,8 @@ fun HomeTabScreen(
                             )
                         }
                         Spacer(Modifier.height(6.dp))
-                        Text("Clover", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("Holland Lop Rabbit · 1.2 yrs", fontSize = 14.sp, color = Color.White.copy(alpha = 0.85f))
+                        Text(activePet.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("${activePet.breed} ${activePet.type} · ${activePet.age}", fontSize = 14.sp, color = Color.White.copy(alpha = 0.85f))
                     }
 
                     Surface(
@@ -406,34 +429,33 @@ fun HomeTabScreen(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE8F5F2)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.DateRange, contentDescription = null, tint = MintSage, modifier = Modifier.size(18.dp))
+                if (reminders.isEmpty()) {
+                    Text("No scheduled care activities for today.", color = Color.Gray, fontSize = 14.sp)
+                } else {
+                    reminders.take(3).forEachIndexed { index, reminder ->
+                        if (index > 0) {
+                            HorizontalDivider(color = Color(0xFFF0F4F1))
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFE8F5F2)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (index % 2 == 0) Icons.Default.DateRange else Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = MintSage,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(14.dp))
+                            Text(reminder.title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = EmeraldDark)
+                            Text(reminder.time, fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.SemiBold)
+                        }
                     }
-                    Spacer(Modifier.width(14.dp))
-                    Text("Morning Timothy Hay", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = EmeraldDark)
-                    Text("8:00 AM", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.SemiBold)
-                }
-                HorizontalDivider(color = Color(0xFFF0F4F1))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE8F5F2)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Notifications, contentDescription = null, tint = MintSage, modifier = Modifier.size(18.dp))
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Text("Fur Brushing & Nail Check", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = EmeraldDark)
-                    Text("5:30 PM", fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -593,7 +615,13 @@ fun CareTabScreen(
 }
 
 @Composable
-fun ProfileTabScreen(onAddPet: () -> Unit, onNavigateProfile: () -> Unit) {
+fun ProfileTabScreen(
+    viewModel: PetViewModel,
+    onAddPet: () -> Unit,
+    onNavigateProfile: () -> Unit
+) {
+    val activePet by viewModel.activePet.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -615,8 +643,8 @@ fun ProfileTabScreen(onAddPet: () -> Unit, onNavigateProfile: () -> Unit) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        Text("Clover", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
-        Text("Holland Lop Rabbit · 1.2 yrs", fontSize = 15.sp, color = Color.Gray)
+        Text(activePet.name, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+        Text("${activePet.breed} ${activePet.type} · ${activePet.age}", fontSize = 15.sp, color = Color.Gray)
 
         Spacer(Modifier.height(32.dp))
 
@@ -631,17 +659,17 @@ fun ProfileTabScreen(onAddPet: () -> Unit, onNavigateProfile: () -> Unit) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Weight", color = Color.Gray, fontWeight = FontWeight.Medium)
-                    Text("1.8 kg", fontWeight = FontWeight.Bold, color = EmeraldDark)
+                    Text(activePet.weight, fontWeight = FontWeight.Bold, color = EmeraldDark)
                 }
                 HorizontalDivider(color = Color(0xFFF0F4F1))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Health Score", color = Color.Gray, fontWeight = FontWeight.Medium)
-                    Text("95 / 100", fontWeight = FontWeight.Bold, color = MintSage)
+                    Text("${activePet.healthScore} / 100", fontWeight = FontWeight.Bold, color = MintSage)
                 }
                 HorizontalDivider(color = Color(0xFFF0F4F1))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Vaccination Status", color = Color.Gray, fontWeight = FontWeight.Medium)
-                    Text("Up to Date", fontWeight = FontWeight.Bold, color = EmeraldDark)
+                    Text(activePet.vaccinationStatus, fontWeight = FontWeight.Bold, color = EmeraldDark)
                 }
             }
         }

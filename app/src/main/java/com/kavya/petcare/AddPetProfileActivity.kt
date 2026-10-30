@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,9 +23,13 @@ import com.kavya.petcare.ui.theme.PetCareTheme
 class AddPetProfileActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val petType = intent.getStringExtra("EXTRA_PET_TYPE") ?: "Rabbit"
         setContent {
             PetCareTheme {
+                val viewModel = PetViewModel.getShared(this)
                 AddPetProfileScreen(
+                    initialType = petType,
+                    viewModel = viewModel,
                     onSave = {
                         startActivity(Intent(this@AddPetProfileActivity, HomeDashboardActivity::class.java))
                         finish()
@@ -36,11 +41,16 @@ class AddPetProfileActivity : ComponentActivity() {
 }
 
 @Composable
-fun AddPetProfileScreen(onSave: () -> Unit) {
-    var petName by remember { mutableStateOf("Clover") }
-    var breed by remember { mutableStateOf("Holland Lop") }
-    var age by remember { mutableStateOf("1.2") }
-    var weight by remember { mutableStateOf("1.8") }
+fun AddPetProfileScreen(
+    initialType: String = "Rabbit",
+    viewModel: PetViewModel = PetViewModel.getShared(LocalContext.current),
+    onSave: () -> Unit
+) {
+    var petName by remember { mutableStateOf(if (initialType == "Rabbit") "Clover" else "Max") }
+    var breed by remember { mutableStateOf(if (initialType == "Rabbit") "Holland Lop" else "Golden Retriever") }
+    var age by remember { mutableStateOf(if (initialType == "Rabbit") "1.2" else "2.0") }
+    var weight by remember { mutableStateOf(if (initialType == "Rabbit") "1.8" else "24.5") }
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Column(
         modifier = Modifier
@@ -62,7 +72,7 @@ fun AddPetProfileScreen(onSave: () -> Unit) {
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Tell us more about your furry friend",
+            "Tell us more about your ${initialType.lowercase()}",
             color = Color.Gray,
             fontSize = 15.sp
         )
@@ -117,13 +127,27 @@ fun AddPetProfileScreen(onSave: () -> Unit) {
         Spacer(Modifier.height(32.dp))
 
         Button(
-            onClick = onSave,
+            onClick = {
+                viewModel.createPetProfile(
+                    name = petName,
+                    breed = breed,
+                    age = "$age yrs",
+                    weight = weight,
+                    type = initialType,
+                    onComplete = onSave
+                )
+            },
+            enabled = !isLoading && petName.isNotBlank() && breed.isNotBlank(),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D))
         ) {
-            Text("Save Profile")
+            if (isLoading) {
+                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+            } else {
+                Text("Save Profile")
+            }
         }
     }
 }

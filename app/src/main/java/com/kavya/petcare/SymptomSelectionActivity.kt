@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,101 +23,129 @@ class SymptomSelectionActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             PetCareTheme {
-                val symptoms = listOf(
-                    "Itching / Excessive Scratching",
-                    "Vomiting or Upset Stomach",
-                    "Lethargy / Lack of Energy",
-                    "Loss of Appetite",
-                    "Coughing or Sneezing",
-                    "Ear Discharge / Head Shaking",
-                    "Skin Redness or Bumps"
-                )
-                val selectedSymptoms = remember { mutableStateMapOf<String, Boolean>() }
-
-                Scaffold(
-                    topBar = {
-                        TopAppBar(title = { Text("Select Symptoms") })
+                val viewModel = PetViewModel.getShared(this)
+                SymptomSelectionScreen(
+                    viewModel = viewModel,
+                    onAnalyze = {
+                        startActivity(Intent(this@SymptomSelectionActivity, AnalyzingActivity::class.java))
+                        finish()
                     }
-                ) { innerPadding ->
-                    Column(
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SymptomSelectionScreen(
+    viewModel: PetViewModel = PetViewModel.getShared(LocalContext.current),
+    onAnalyze: () -> Unit
+) {
+    val symptomsFromApi by viewModel.symptomsList.collectAsState()
+    val fallbackSymptoms = listOf(
+        "Itching / Excessive Scratching",
+        "Vomiting or Upset Stomach",
+        "Lethargy / Lack of Energy",
+        "Loss of Appetite",
+        "Coughing or Sneezing",
+        "Ear Discharge / Head Shaking",
+        "Skin Redness or Bumps"
+    )
+
+    val symptoms = if (symptomsFromApi.isNotEmpty()) symptomsFromApi else fallbackSymptoms
+    val selectedSymptoms = remember { mutableStateMapOf<String, Boolean>() }
+    var isSubmitting by remember { mutableStateOf(false) }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("Select Symptoms") })
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(24.dp)
+        ) {
+            Text(
+                text = "What symptoms is your pet showing?",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Select all applicable signs for accurate AI diagnosis",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(symptoms) { symptom ->
+                    val isChecked = selectedSymptoms[symptom] ?: false
+                    Card(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                            .padding(24.dp)
-                    ) {
-                        Text(
-                            text = "What symptoms is your pet showing?",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Select all applicable signs for accurate AI diagnosis",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        LazyColumn(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(symptoms) { symptom ->
-                                val isChecked = selectedSymptoms[symptom] ?: false
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            selectedSymptoms[symptom] = !isChecked
-                                        },
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                        else MaterialTheme.colorScheme.surfaceVariant
-                                    ),
-                                    shape = MaterialTheme.shapes.medium
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = symptom,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                        Checkbox(
-                                            checked = isChecked,
-                                            onCheckedChange = { checked ->
-                                                selectedSymptoms[symptom] = checked
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = {
-                                startActivity(Intent(this@SymptomSelectionActivity, AnalyzingActivity::class.java))
-                                finish()
+                            .fillMaxWidth()
+                            .clickable {
+                                selectedSymptoms[symptom] = !isChecked
                             },
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            else MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = MaterialTheme.shapes.medium
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(50.dp),
-                            shape = MaterialTheme.shapes.medium
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Analyze Symptoms",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold
+                                text = symptom,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Checkbox(
+                                checked = isChecked,
+                                onCheckedChange = { checked ->
+                                    selectedSymptoms[symptom] = checked
+                                }
                             )
                         }
                     }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    val chosen = selectedSymptoms.filter { it.value }.keys.toList()
+                    isSubmitting = true
+                    viewModel.runDiagnosticScan(chosen) {
+                        isSubmitting = false
+                        onAnalyze()
+                    }
+                },
+                enabled = !isSubmitting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        text = "Analyze Symptoms",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }

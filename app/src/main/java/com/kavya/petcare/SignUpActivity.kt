@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -27,7 +28,9 @@ class SignUpActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             PetCareTheme {
+                val viewModel = PetViewModel.getShared(this)
                 SignUpScreen(
+                    viewModel = viewModel,
                     onBack = {
                         startActivity(Intent(this@SignUpActivity, LoginActivity::class.java))
                         finish()
@@ -44,12 +47,15 @@ class SignUpActivity : ComponentActivity() {
 
 @Composable
 fun SignUpScreen(
+    viewModel: PetViewModel = PetViewModel.getShared(LocalContext.current),
     onBack: () -> Unit,
     onCreateAccount: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var signUpError by remember { mutableStateOf<String?>(null) }
+    val isLoading by viewModel.isLoading.collectAsState()
 
     Column(
         modifier = Modifier
@@ -104,11 +110,31 @@ fun SignUpScreen(
             color = Color.Gray
         )
 
-        Spacer(Modifier.height(32.dp))
+        if (signUpError != null) {
+            Spacer(Modifier.height(14.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFFFFEBEE),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    text = signUpError ?: "",
+                    modifier = Modifier.padding(12.dp),
+                    color = Color(0xFFC62828),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
 
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it },
+            onValueChange = {
+                name = it
+                signUpError = null
+            },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Full name") },
             singleLine = true,
@@ -119,7 +145,10 @@ fun SignUpScreen(
 
         OutlinedTextField(
             value = email,
-            onValueChange = { email = it },
+            onValueChange = {
+                email = it
+                signUpError = null
+            },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Email address") },
             singleLine = true,
@@ -130,7 +159,10 @@ fun SignUpScreen(
 
         OutlinedTextField(
             value = password,
-            onValueChange = { password = it },
+            onValueChange = {
+                password = it
+                signUpError = null
+            },
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Password") },
             singleLine = true,
@@ -141,10 +173,21 @@ fun SignUpScreen(
         Spacer(Modifier.height(24.dp))
 
         Button(
-            onClick = onCreateAccount,
-            enabled = name.isNotBlank() &&
-                    email.isNotBlank() &&
-                    password.length >= 6,
+            onClick = {
+                viewModel.register(
+                    name = name,
+                    email = email,
+                    pass = password,
+                    onSuccess = {
+                        signUpError = null
+                        onCreateAccount()
+                    },
+                    onError = { err ->
+                        signUpError = err
+                    }
+                )
+            },
+            enabled = !isLoading && name.isNotBlank() && email.isNotBlank() && password.length >= 6,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),
@@ -152,7 +195,15 @@ fun SignUpScreen(
                 containerColor = Color(0xFF267D6D)
             )
         ) {
-            Text("Create Account")
+            if (isLoading) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(24.dp),
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Create Account")
+            }
         }
 
         Spacer(Modifier.height(12.dp))

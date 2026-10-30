@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,8 +48,11 @@ class SelectPetTypeActivity : ComponentActivity() {
                             startActivity(Intent(this@SelectPetTypeActivity, SignUpActivity::class.java))
                             finish()
                         },
-                        onContinue = {
-                            startActivity(Intent(this@SelectPetTypeActivity, AddPetProfileActivity::class.java))
+                        onContinue = { selectedType ->
+                            val intent = Intent(this@SelectPetTypeActivity, AddPetProfileActivity::class.java).apply {
+                                putExtra("EXTRA_PET_TYPE", selectedType)
+                            }
+                            startActivity(intent)
                             finish()
                         }
                     )
@@ -63,7 +65,7 @@ class SelectPetTypeActivity : ComponentActivity() {
 @Composable
 fun SelectPetTypeScreen(
     onBack: () -> Unit,
-    onContinue: () -> Unit
+    onContinue: (String) -> Unit
 ) {
     var selectedType by remember { mutableStateOf("Dog") }
     val petTypes = listOf(
@@ -185,7 +187,7 @@ fun SelectPetTypeScreen(
         Spacer(Modifier.height(16.dp))
 
         Button(
-            onClick = onContinue,
+            onClick = { onContinue(selectedType) },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(54.dp),
