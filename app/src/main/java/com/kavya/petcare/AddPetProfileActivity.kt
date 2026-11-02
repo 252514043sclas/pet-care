@@ -73,7 +73,7 @@ fun AddPetProfileScreen(
 
         Text(
             "Tell us more about your ${initialType.lowercase()}",
-            color = Color.Gray,
+            color = Color(0xFF2C3E37),
             fontSize = 15.sp
         )
 
@@ -92,6 +92,13 @@ fun AddPetProfileScreen(
                     value = petName,
                     onValueChange = { petName = it },
                     label = { Text("Pet Name") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF111816),
+                        unfocusedTextColor = Color(0xFF111816),
+                        focusedLabelColor = Color(0xFF184D43),
+                        unfocusedLabelColor = Color(0xFF2C3E37),
+                        focusedBorderColor = Color(0xFF184D43)
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -100,6 +107,13 @@ fun AddPetProfileScreen(
                     value = breed,
                     onValueChange = { breed = it },
                     label = { Text("Breed") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color(0xFF111816),
+                        unfocusedTextColor = Color(0xFF111816),
+                        focusedLabelColor = Color(0xFF184D43),
+                        unfocusedLabelColor = Color(0xFF2C3E37),
+                        focusedBorderColor = Color(0xFF184D43)
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 )
@@ -109,6 +123,13 @@ fun AddPetProfileScreen(
                         value = age,
                         onValueChange = { age = it },
                         label = { Text("Age (yrs)") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color(0xFF111816),
+                            unfocusedTextColor = Color(0xFF111816),
+                            focusedLabelColor = Color(0xFF184D43),
+                            unfocusedLabelColor = Color(0xFF2C3E37),
+                            focusedBorderColor = Color(0xFF184D43)
+                        ),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )
@@ -117,6 +138,13 @@ fun AddPetProfileScreen(
                         value = weight,
                         onValueChange = { weight = it },
                         label = { Text("Weight (kg)") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color(0xFF111816),
+                            unfocusedTextColor = Color(0xFF111816),
+                            focusedLabelColor = Color(0xFF184D43),
+                            unfocusedLabelColor = Color(0xFF2C3E37),
+                            focusedBorderColor = Color(0xFF184D43)
+                        ),
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp)
                     )

@@ -11,14 +11,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kavya.petcare.ui.theme.PetCareTheme
@@ -54,6 +58,7 @@ fun SignUpScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var signUpError by remember { mutableStateOf<String?>(null) }
     val isLoading by viewModel.isLoading.collectAsState()
 
@@ -138,6 +143,15 @@ fun SignUpScreen(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Full name") },
             singleLine = true,
+            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF111816),
+                unfocusedTextColor = Color(0xFF111816),
+                focusedBorderColor = Color(0xFF267D6D),
+                unfocusedBorderColor = Color(0xFFB5C4BE),
+                focusedLabelColor = Color(0xFF184D43),
+                unfocusedLabelColor = Color(0xFF556B64)
+            ),
             shape = RoundedCornerShape(14.dp)
         )
 
@@ -152,6 +166,15 @@ fun SignUpScreen(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Email address") },
             singleLine = true,
+            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF111816),
+                unfocusedTextColor = Color(0xFF111816),
+                focusedBorderColor = Color(0xFF267D6D),
+                unfocusedBorderColor = Color(0xFFB5C4BE),
+                focusedLabelColor = Color(0xFF184D43),
+                unfocusedLabelColor = Color(0xFF556B64)
+            ),
             shape = RoundedCornerShape(14.dp)
         )
 
@@ -164,9 +187,27 @@ fun SignUpScreen(
                 signUpError = null
             },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
+            label = { Text("Password (min 6 characters)") },
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
+            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF111816),
+                unfocusedTextColor = Color(0xFF111816),
+                focusedBorderColor = Color(0xFF267D6D),
+                unfocusedBorderColor = Color(0xFFB5C4BE),
+                focusedLabelColor = Color(0xFF184D43),
+                unfocusedLabelColor = Color(0xFF556B64)
+            ),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = Color(0xFF267D6D)
+                    )
+                }
+            },
             shape = RoundedCornerShape(14.dp)
         )
 

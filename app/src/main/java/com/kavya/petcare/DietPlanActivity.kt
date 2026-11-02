@@ -77,7 +77,7 @@ class DietPlanActivity : ComponentActivity() {
                         Text(text = calories, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                     }
                 }
-                Text(text = meal, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = meal, style = MaterialTheme.typography.bodyLarge, color = androidx.compose.ui.graphics.Color(0xFF2C3E37))
             }
         }
     }

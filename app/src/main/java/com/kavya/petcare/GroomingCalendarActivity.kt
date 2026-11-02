@@ -92,7 +92,8 @@ fun GroomingCalendarScreen(
                                 Text(
                                     text = taskItem.task,
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = androidx.compose.ui.graphics.Color(0xFF111816)
                                 )
                             }
                         }
@@ -116,7 +117,8 @@ fun GroomingCalendarScreen(
                                 Text(
                                     text = task,
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = androidx.compose.ui.graphics.Color(0xFF111816)
                                 )
                             }
                         }

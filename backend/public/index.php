@@ -28,6 +28,8 @@ use App\Controllers\DashboardController;
 use App\Controllers\DietController;
 use App\Controllers\HealthController;
 use App\Controllers\ReminderController;
+use App\Controllers\PreferenceController;
+use App\Controllers\SupportController;
 use App\Utils\Response;
 
 // Apply CORS
@@ -114,8 +116,30 @@ try {
         (new AuthController())->me($user);
     }
 
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST') && $uri === '/api/auth/profile') {
+        (new AuthController())->updateProfile($user, $input);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST') && $uri === '/api/auth/password') {
+        (new AuthController())->changePassword($user, $input);
+    }
+
     if ($requestMethod === 'POST' && $uri === '/api/auth/logout') {
         (new AuthController())->logout($user);
+    }
+
+    // User Preferences (Notifications, Theme, Font Size)
+    if ($requestMethod === 'GET' && $uri === '/api/user/preferences') {
+        (new PreferenceController())->getPreferences($user);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST') && $uri === '/api/user/preferences') {
+        (new PreferenceController())->updatePreferences($user, $input);
+    }
+
+    // Support & Issue Reports
+    if ($requestMethod === 'POST' && $uri === '/api/support/report') {
+        (new SupportController())->submitReport($user, $input);
     }
 
     // Dashboard
@@ -142,6 +166,10 @@ try {
 
     if ($requestMethod === 'DELETE' && preg_match('#^/api/pets/(\d+)$#', $uri, $matches)) {
         (new PetController())->destroy($user, (int)$matches[1]);
+    }
+
+    if ($requestMethod === 'POST' && preg_match('#^/api/pets/(\d+)/photo$#', $uri, $matches)) {
+        (new PetController())->uploadPhoto($user, (int)$matches[1], $input);
     }
 
     // Pet Weights

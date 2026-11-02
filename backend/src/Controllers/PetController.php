@@ -114,7 +114,7 @@ class PetController {
         $fields = [];
         $params = [':id' => $petId, ':user_id' => $currentUser['id']];
 
-        $allowed = ['name', 'species', 'breed', 'age_years', 'weight_kg', 'gender', 'microchip_id', 'health_score', 'vaccination_status', 'is_active'];
+        $allowed = ['name', 'species', 'breed', 'age_years', 'weight_kg', 'gender', 'microchip_id', 'health_score', 'vaccination_status', 'image_url', 'is_active'];
         foreach ($allowed as $field) {
             if (array_key_exists($field, $input)) {
                 $fields[] = "`$field` = :$field";
@@ -217,6 +217,62 @@ class PetController {
             'weight_kg' => $weightKg,
             'recorded_date' => $date,
         ], 'Weight recorded successfully', 201);
+    }
+
+    public function uploadPhoto(array $currentUser, int $petId, array $input): void {
+        $pdo = Database::getConnection();
+        $checkStmt = $pdo->prepare('SELECT id, name FROM pets WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $checkStmt->execute([':id' => $petId, ':user_id' => $currentUser['id']]);
+        if (!$checkStmt->fetch()) {
+            Response::notFound('Pet not found or unauthorized');
+        }
+
+        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/pets/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $imageBinary = null;
+        $extension = 'jpg';
+
+        // Check if uploaded as multipart file
+        if (!empty($_FILES['image']['tmp_name']) && is_uploaded_file($_FILES['image']['tmp_name'])) {
+            $imageBinary = file_get_contents($_FILES['image']['tmp_name']);
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $_FILES['image']['tmp_name']);
+            finfo_close($finfo);
+            if ($mime === 'image/png') $extension = 'png';
+            elseif ($mime === 'image/webp') $extension = 'webp';
+        } elseif (!empty($input['image_base64'])) {
+            $data = $input['image_base64'];
+            if (preg_match('#^data:image/(\w+);base64,#i', $data, $matches)) {
+                $extension = strtolower($matches[1]) === 'png' ? 'png' : 'jpg';
+                $data = substr($data, strpos($data, ',') + 1);
+            }
+            $imageBinary = base64_decode($data);
+        }
+
+        if (!$imageBinary) {
+            Response::error('No valid image provided. Send image file or image_base64 string.', 400);
+        }
+
+        $filename = 'pet_' . $petId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+        $filePath = $uploadDir . $filename;
+        file_put_contents($filePath, $imageBinary);
+
+        // Store relative path
+        $relativeUrl = 'uploads/pets/' . $filename;
+        $stmt = $pdo->prepare('UPDATE pets SET image_url = :url, updated_at = NOW() WHERE id = :id');
+        $stmt->execute([':url' => $relativeUrl, ':id' => $petId]);
+
+        $fetchStmt = $pdo->prepare('SELECT * FROM pets WHERE id = :id');
+        $fetchStmt->execute([':id' => $petId]);
+        $updatedPet = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+        Response::success([
+            'image_url' => $relativeUrl,
+            'pet' => $updatedPet,
+        ], 'Pet photo updated successfully');
     }
 }
 

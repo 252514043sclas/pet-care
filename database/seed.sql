@@ -4,10 +4,12 @@
 
 USE `pet_care_db`;
 
--- 1. Demo User: password is "password123"
+-- 1. Demo Users: password is "password123"
 -- Generated with password_hash('password123', PASSWORD_BCRYPT)
 INSERT INTO `users` (`id`, `name`, `email`, `password_hash`, `created_at`) VALUES
-(1, 'Kavya', 'kavya@petcare.com', '$2y$10$BtEcDFdSucMXYuKqftESQeZR5tL7b.rqbAIL5KlxJ34lwAezZEbmO', NOW());
+(1, 'Kavya', 'ammu@gamil.com', '$2y$10$BtEcDFdSucMXYuKqftESQeZR5tL7b.rqbAIL5KlxJ34lwAezZEbmO', NOW()),
+(4, 'Kavya', 'kavya@petcare.com', '$2y$10$BtEcDFdSucMXYuKqftESQeZR5tL7b.rqbAIL5KlxJ34lwAezZEbmO', NOW())
+ON DUPLICATE KEY UPDATE `password_hash` = VALUES(`password_hash`);
 
 -- 2. Demo User Mobile Bearer Token for immediate test access
 -- SHA-256 hash of "demo_token_secret_12345"

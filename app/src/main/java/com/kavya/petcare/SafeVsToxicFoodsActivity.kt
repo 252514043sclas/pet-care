@@ -90,13 +90,14 @@ fun SafeVsToxicFoodsScreen(
                                 Text(
                                     text = foodItem.foodName,
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSafe) androidx.compose.ui.graphics.Color(0xFF0F4C3A) else androidx.compose.ui.graphics.Color(0xFFB00020)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = foodItem.description,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = androidx.compose.ui.graphics.Color(0xFF2C3E37)
                                 )
                             }
                         }
@@ -116,13 +117,14 @@ fun SafeVsToxicFoodsScreen(
                                 Text(
                                     text = food,
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSafe) androidx.compose.ui.graphics.Color(0xFF0F4C3A) else androidx.compose.ui.graphics.Color(0xFFB00020)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = desc,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = androidx.compose.ui.graphics.Color(0xFF2C3E37)
                                 )
                             }
                         }

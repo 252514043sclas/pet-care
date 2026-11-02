@@ -101,6 +101,12 @@ fun WeightTrackerScreen(
                 value = weightInput,
                 onValueChange = { weightInput = it },
                 label = { Text("Weight in kg (e.g. 1.85)") },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
+                    unfocusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
+                    focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF184D43),
+                    unfocusedLabelColor = androidx.compose.ui.graphics.Color(0xFF2C3E37)
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
                 singleLine = true

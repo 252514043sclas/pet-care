@@ -49,6 +49,7 @@
         <activity android:name=".AddReminderActivity" android:exported="false" />
         <activity android:name=".GroomingCalendarActivity" android:exported="false" />
         <activity android:name=".GroomingGuideActivity" android:exported="false" />
+        <activity android:name=".SettingsActivity" android:exported="false" />
 
     </application>
 

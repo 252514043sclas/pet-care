@@ -88,7 +88,7 @@ class GroomingGuideActivity : ComponentActivity() {
                 Text(
                     text = steps,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = androidx.compose.ui.graphics.Color(0xFF2C3E37)
                 )
             }
         }

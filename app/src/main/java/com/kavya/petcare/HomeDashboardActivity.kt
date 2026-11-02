@@ -10,6 +10,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -68,7 +70,8 @@ class HomeDashboardActivity : ComponentActivity() {
                     onNavigateCalendar = { startActivity(Intent(this, GroomingCalendarActivity::class.java)) },
                     onNavigateGuides = { startActivity(Intent(this, GroomingGuideActivity::class.java)) },
                     onAddPet = { startActivity(Intent(this, SelectPetTypeActivity::class.java)) },
-                    onNavigateProfile = { startActivity(Intent(this, PetDetailProfileActivity::class.java)) }
+                    onNavigateProfile = { startActivity(Intent(this, PetDetailProfileActivity::class.java)) },
+                    onNavigateSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
                 )
             }
         }
@@ -97,7 +100,8 @@ fun MainSlidingDashboardScreen(
     onNavigateCalendar: () -> Unit,
     onNavigateGuides: () -> Unit,
     onAddPet: () -> Unit,
-    onNavigateProfile: () -> Unit
+    onNavigateProfile: () -> Unit,
+    onNavigateSettings: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { 5 })
     val coroutineScope = rememberCoroutineScope()
@@ -233,6 +237,7 @@ fun MainSlidingDashboardScreen(
                         onNavigateDiet = { coroutineScope.launch { pagerState.animateScrollToPage(2) } },
                         onNavigateGrooming = { coroutineScope.launch { pagerState.animateScrollToPage(3) } },
                         onNavigateProfile = onNavigateProfile,
+                        onNavigateSettings = onNavigateSettings,
                         onAddPet = onAddPet
                     )
                     1 -> HealthTabScreen(
@@ -253,7 +258,8 @@ fun MainSlidingDashboardScreen(
                     4 -> ProfileTabScreen(
                         viewModel = viewModel,
                         onAddPet = onAddPet,
-                        onNavigateProfile = onNavigateProfile
+                        onNavigateProfile = onNavigateProfile,
+                        onNavigateSettings = onNavigateSettings
                     )
                 }
             }
@@ -268,6 +274,7 @@ fun HomeTabScreen(
     onNavigateDiet: () -> Unit,
     onNavigateGrooming: () -> Unit,
     onNavigateProfile: () -> Unit,
+    onNavigateSettings: () -> Unit,
     onAddPet: () -> Unit
 ) {
     val activePet by viewModel.activePet.collectAsState()
@@ -291,16 +298,34 @@ fun HomeTabScreen(
                 Text("Pet Dashboard", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = EmeraldDark)
             }
 
-            Surface(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clickable { onNavigateProfile() },
-                shape = CircleShape,
-                color = Color.White,
-                shadowElevation = 4.dp
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Person, contentDescription = "Profile", tint = MintSage, modifier = Modifier.size(26.dp))
+                Surface(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clickable { onNavigateSettings() },
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 4.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = EmeraldDark, modifier = Modifier.size(24.dp))
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clickable { onNavigateProfile() },
+                    shape = CircleShape,
+                    color = Color.White,
+                    shadowElevation = 4.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Person, contentDescription = "Profile", tint = MintSage, modifier = Modifier.size(24.dp))
+                    }
                 }
             }
         }
@@ -618,7 +643,8 @@ fun CareTabScreen(
 fun ProfileTabScreen(
     viewModel: PetViewModel,
     onAddPet: () -> Unit,
-    onNavigateProfile: () -> Unit
+    onNavigateProfile: () -> Unit,
+    onNavigateSettings: () -> Unit
 ) {
     val activePet by viewModel.activePet.collectAsState()
 
@@ -658,17 +684,17 @@ fun ProfileTabScreen(
         ) {
             Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Weight", color = Color.Gray, fontWeight = FontWeight.Medium)
+                    Text("Weight", color = Color(0xFF2C3E37), fontWeight = FontWeight.SemiBold)
                     Text(activePet.weight, fontWeight = FontWeight.Bold, color = EmeraldDark)
                 }
                 HorizontalDivider(color = Color(0xFFF0F4F1))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Health Score", color = Color.Gray, fontWeight = FontWeight.Medium)
+                    Text("Health Score", color = Color(0xFF2C3E37), fontWeight = FontWeight.SemiBold)
                     Text("${activePet.healthScore} / 100", fontWeight = FontWeight.Bold, color = MintSage)
                 }
                 HorizontalDivider(color = Color(0xFFF0F4F1))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Vaccination Status", color = Color.Gray, fontWeight = FontWeight.Medium)
+                    Text("Vaccination Status", color = Color(0xFF2C3E37), fontWeight = FontWeight.SemiBold)
                     Text(activePet.vaccinationStatus, fontWeight = FontWeight.Bold, color = EmeraldDark)
                 }
             }
@@ -685,6 +711,22 @@ fun ProfileTabScreen(
             shape = RoundedCornerShape(27.dp)
         ) {
             Text("Add Another Pet", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        OutlinedButton(
+            onClick = onNavigateSettings,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+            shape = RoundedCornerShape(27.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldDark),
+            border = BorderStroke(1.5.dp, MintSage)
+        ) {
+            Icon(Icons.Default.Settings, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("App Settings & Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
         }
     }
 }

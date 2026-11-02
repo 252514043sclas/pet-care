@@ -27,12 +27,22 @@ class PetCareRepository(private val context: Context) {
         }
     }
 
+    private fun formatNetworkError(e: Throwable): String {
+        val currentUrl = NetworkConfig.getCurrentBaseUrl(context)
+        return when (e) {
+            is java.net.ConnectException -> "Cannot connect to server at $currentUrl. Please ensure XAMPP Apache is running on port 80."
+            is java.net.SocketTimeoutException -> "Connection timed out connecting to $currentUrl. Please check server responsiveness."
+            is java.net.UnknownHostException -> "Unknown host at $currentUrl. Please verify your network and server URL."
+            else -> "Network error: ${e.localizedMessage ?: "Could not connect to server"}"
+        }
+    }
+
     // ----------------------------------------------------
     // Authentication
     // ----------------------------------------------------
     suspend fun login(email: String, pass: String): Result<AuthData> = withContext(Dispatchers.IO) {
         try {
-            val response = api.login(LoginRequest(email = email.trim(), password = pass.trim()))
+            val response = api.login(LoginRequest(email = email.trim(), password = pass))
             if (response.isSuccessful && response.body()?.success == true) {
                 val authData = response.body()!!.data!!
                 session.saveAuthSession(
@@ -48,13 +58,13 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage ?: "Could not connect to server"}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
     suspend fun register(name: String, email: String, pass: String): Result<AuthData> = withContext(Dispatchers.IO) {
         try {
-            val response = api.register(RegisterRequest(name = name.trim(), email = email.trim(), password = pass.trim()))
+            val response = api.register(RegisterRequest(name = name.trim(), email = email.trim(), password = pass))
             if (response.isSuccessful && response.body()?.success == true) {
                 val authData = response.body()!!.data!!
                 session.saveAuthSession(
@@ -69,7 +79,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage ?: "Could not connect to server"}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -82,7 +92,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Could not process request"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -111,7 +121,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load dashboard"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -127,7 +137,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load pets"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -157,7 +167,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to create pet"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -170,7 +180,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to fetch pet"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -183,7 +193,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load weight records"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -196,7 +206,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to record weight"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -212,7 +222,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load diet summary"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -225,7 +235,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load meal schedule"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -239,7 +249,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to log meal"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -252,7 +262,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load foods guide"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -268,7 +278,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load reminders"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -282,7 +292,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to save reminder"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -295,7 +305,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception("Could not toggle reminder"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -308,7 +318,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load calendar"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -321,7 +331,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load guides"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -337,7 +347,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load symptoms"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -351,7 +361,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Diagnostic scan failed"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -364,7 +374,7 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load condition guide"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 
@@ -377,8 +387,166 @@ class PetCareRepository(private val context: Context) {
                 Result.failure(Exception("Failed to save report"))
             }
         } catch (e: Exception) {
-            Result.failure(Exception("Network error: ${e.localizedMessage}"))
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    // ----------------------------------------------------
+    // Pet Modifications & Photo Upload
+    // ----------------------------------------------------
+    suspend fun updatePetDetails(id: Int, fields: Map<String, Any>): Result<PetDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updatePet(id, fields)
+            if (response.isSuccessful && response.body()?.success == true) {
+                val updatedPet = response.body()!!.data!!
+                Result.success(updatedPet)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update pet")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deletePet(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deletePet(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to delete pet")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun uploadPetPhoto(id: Int, base64Image: String): Result<UploadPhotoDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.uploadPetPhoto(id, mapOf("image_base64" to base64Image))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to upload photo")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    // ----------------------------------------------------
+    // User Profile & Settings
+    // ----------------------------------------------------
+    suspend fun updateProfile(name: String, email: String): Result<UserDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updateProfile(mapOf("name" to name.trim(), "email" to email.trim()))
+            if (response.isSuccessful && response.body()?.success == true) {
+                val user = response.body()!!.data!!
+                session.saveAuthSession(
+                    token = session.getToken() ?: "",
+                    userId = user.id,
+                    userName = user.name,
+                    email = user.email,
+                    activePetId = session.getActivePetId()
+                )
+                Result.success(user)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update profile")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun changePassword(currentPass: String, newPass: String): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.changePassword(mapOf("current_password" to currentPass, "new_password" to newPass))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update password")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getPreferences(): Result<PreferencesDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getPreferences()
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                Result.failure(Exception("Failed to load preferences"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updatePreferences(preferences: Map<String, Any>): Result<PreferencesDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updatePreferences(preferences)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to update preferences")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun submitSupportReport(category: String, subject: String, description: String): Result<SupportTicketDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.submitSupportReport(mapOf(
+                "category" to category.trim(),
+                "subject" to subject.trim(),
+                "description" to description.trim()
+            ))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to submit report")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
         }
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     

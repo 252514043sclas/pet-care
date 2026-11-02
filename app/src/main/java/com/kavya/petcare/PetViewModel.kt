@@ -25,7 +25,8 @@ data class PetProfile(
     val healthScore: Int = 95,
     val gender: String = "Female",
     val microchipId: String = "#985142091",
-    val vaccinationStatus: String = "Up to Date"
+    val vaccinationStatus: String = "Up to Date",
+    val imageUrl: String? = null
 )
 
 data class CareReminder(
@@ -121,9 +122,19 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     private val _conditionDetail = MutableStateFlow<ConditionGuideDto?>(null)
     val conditionDetail: StateFlow<ConditionGuideDto?> = _conditionDetail.asStateFlow()
 
+    // All User Pets (for Pet Management)
+    private val _allPets = MutableStateFlow<List<PetDto>>(emptyList())
+    val allPets: StateFlow<List<PetDto>> = _allPets.asStateFlow()
+
+    // User Preferences (Notifications & Theme)
+    private val _preferences = MutableStateFlow(PreferencesDto())
+    val preferences: StateFlow<PreferencesDto> = _preferences.asStateFlow()
+
     init {
         // If user already has a session or on launch, fetch live data from backend
         refreshDashboard()
+        loadAllPets()
+        loadPreferences()
         loadSafeToxicFoods()
         loadCalendarTasks()
         loadSymptoms()
@@ -194,7 +205,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                         healthScore = p.healthScore,
                         gender = p.gender ?: "Female",
                         microchipId = p.microchipId ?: "#985142091",
-                        vaccinationStatus = p.vaccinationStatus
+                        vaccinationStatus = p.vaccinationStatus,
+                        imageUrl = p.imageUrl
                     )
                 }
 
@@ -252,6 +264,159 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             weight = weight,
             type = type
         )
+    }
+
+    fun loadAllPets() {
+        viewModelScope.launch {
+            repository.getPets().onSuccess { list ->
+                _allPets.value = list
+            }
+        }
+    }
+
+    fun editPetProfile(
+        petId: Int,
+        name: String,
+        breed: String,
+        age: String,
+        weight: String,
+        type: String,
+        gender: String,
+        microchipId: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val weightKg = weight.replace("kg", "").trim().toDoubleOrNull() ?: 1.8
+            val fields = mapOf<String, Any>(
+                "name" to name.trim(),
+                "breed" to breed.trim(),
+                "age_years" to age.trim(),
+                "weight_kg" to weightKg,
+                "species" to type.trim(),
+                "gender" to gender.trim(),
+                "microchip_id" to microchipId.trim()
+            )
+            val result = repository.updatePetDetails(petId, fields)
+            _isLoading.value = false
+            result.onSuccess { updated ->
+                _activePet.value = _activePet.value.copy(
+                    name = updated.name,
+                    breed = updated.breed,
+                    age = updated.ageYears,
+                    weight = "${updated.weightKg} kg",
+                    type = updated.species,
+                    gender = updated.gender,
+                    microchipId = updated.microchipId ?: _activePet.value.microchipId,
+                    imageUrl = updated.imageUrl ?: _activePet.value.imageUrl
+                )
+                refreshDashboard()
+                loadAllPets()
+                onSuccess()
+            }.onFailure { err ->
+                onError(err.message ?: "Failed to update pet profile")
+            }
+        }
+    }
+
+    fun uploadPetPhoto(petId: Int, base64: String, onDone: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = repository.uploadPetPhoto(petId, base64)
+            _isLoading.value = false
+            result.onSuccess { data ->
+                _activePet.value = _activePet.value.copy(imageUrl = data.imageUrl)
+                refreshDashboard()
+                loadAllPets()
+                onDone(true, "Pet photo updated successfully")
+            }.onFailure { err ->
+                onDone(false, err.message ?: "Failed to upload photo")
+            }
+        }
+    }
+
+    fun deletePet(petId: Int, onDone: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = repository.deletePet(petId)
+            _isLoading.value = false
+            result.onSuccess {
+                loadAllPets()
+                refreshDashboard()
+                onDone(true, "Pet deleted successfully")
+            }.onFailure { err ->
+                onDone(false, err.message ?: "Failed to delete pet")
+            }
+        }
+    }
+
+    fun logout(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            repository.logout()
+            _isLoading.value = false
+            onComplete()
+        }
+    }
+
+    fun updateUserProfile(name: String, email: String, onDone: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = repository.updateProfile(name, email)
+            _isLoading.value = false
+            result.onSuccess { user ->
+                onDone(true, "Profile updated successfully")
+            }.onFailure { err ->
+                onDone(false, err.message ?: "Failed to update profile")
+            }
+        }
+    }
+
+    fun changePassword(currentPass: String, newPass: String, onDone: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = repository.changePassword(currentPass, newPass)
+            _isLoading.value = false
+            result.onSuccess {
+                onDone(true, "Password changed successfully")
+            }.onFailure { err ->
+                onDone(false, err.message ?: "Failed to change password")
+            }
+        }
+    }
+
+    fun loadPreferences() {
+        viewModelScope.launch {
+            repository.getPreferences().onSuccess { prefs ->
+                _preferences.value = prefs
+            }
+        }
+    }
+
+    fun updatePreferences(map: Map<String, Any>, onDone: ((Boolean, String) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = repository.updatePreferences(map)
+            result.onSuccess { updated ->
+                _preferences.value = updated
+                onDone?.invoke(true, "Preferences updated")
+            }.onFailure { err ->
+                onDone?.invoke(false, err.message ?: "Failed to update preferences")
+            }
+        }
+    }
+
+    fun submitSupportReport(category: String, subject: String, description: String, onDone: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = repository.submitSupportReport(category, subject, description)
+            _isLoading.value = false
+            result.onSuccess { ticket ->
+                onDone(true, "Report submitted successfully! Ticket #${ticket.ticketId}")
+            }.onFailure { err ->
+                onDone(false, err.message ?: "Failed to submit report")
+            }
+        }
     }
 
     // ----------------------------------------------------

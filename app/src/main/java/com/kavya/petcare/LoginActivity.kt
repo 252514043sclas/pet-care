@@ -12,14 +12,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kavya.petcare.data.network.NetworkConfig
@@ -52,14 +56,16 @@ fun LoginScreen(
     onLogin: () -> Unit,
     onSignUp: () -> Unit
 ) {
-    var email by remember { mutableStateOf("kavya@petcare.com") }
-    var password by remember { mutableStateOf("password123") }
+    var identifier by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var showForgotPasswordDialog by remember { mutableStateOf(false) }
     var showServerConfigDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
     var serverUrlInput by remember { mutableStateOf(NetworkConfig.getCurrentBaseUrl(context)) }
     var resetEmail by remember { mutableStateOf("") }
     var resetSuccessMessage by remember { mutableStateOf("") }
+    var resetErrorMessage by remember { mutableStateOf<String?>(null) }
     var loginErrorMessage by remember { mutableStateOf<String?>(null) }
     val isLoading by viewModel.isLoading.collectAsState()
 
@@ -130,17 +136,40 @@ fun LoginScreen(
 
     if (showForgotPasswordDialog) {
         AlertDialog(
-            onDismissRequest = { showForgotPasswordDialog = false },
+            onDismissRequest = {
+                showForgotPasswordDialog = false
+                resetErrorMessage = null
+            },
             title = { Text("Reset Password", fontWeight = FontWeight.Bold, color = Color(0xFF184D43)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Enter your email address to receive a password reset link.")
+                    Text("Enter your email address to receive a password reset link.", color = Color(0xFF2D3748))
+                    if (resetErrorMessage != null) {
+                        Text(
+                            text = resetErrorMessage ?: "",
+                            color = Color(0xFFC62828),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                     OutlinedTextField(
                         value = resetEmail,
-                        onValueChange = { resetEmail = it },
+                        onValueChange = {
+                            resetEmail = it
+                            resetErrorMessage = null
+                        },
                         label = { Text("Email address") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
+                        textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color(0xFF111816),
+                            unfocusedTextColor = Color(0xFF111816),
+                            focusedBorderColor = Color(0xFF267D6D),
+                            unfocusedBorderColor = Color(0xFFB5C4BE),
+                            focusedLabelColor = Color(0xFF184D43),
+                            unfocusedLabelColor = Color(0xFF556B64)
+                        ),
                         shape = RoundedCornerShape(12.dp)
                     )
                 }
@@ -148,11 +177,19 @@ fun LoginScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (resetEmail.isNotBlank()) {
-                            viewModel.forgotPassword(resetEmail) { _, msg ->
+                        val trimmed = resetEmail.trim()
+                        if (trimmed.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(trimmed).matches()) {
+                            resetErrorMessage = "Please enter a valid email address."
+                            return@Button
+                        }
+                        viewModel.forgotPassword(trimmed) { success, msg ->
+                            if (success) {
                                 resetSuccessMessage = msg
+                                loginErrorMessage = null
                                 showForgotPasswordDialog = false
                                 resetEmail = ""
+                            } else {
+                                resetErrorMessage = msg
                             }
                         }
                     },
@@ -162,7 +199,10 @@ fun LoginScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showForgotPasswordDialog = false }) {
+                TextButton(onClick = {
+                    showForgotPasswordDialog = false
+                    resetErrorMessage = null
+                }) {
                     Text("Cancel", color = Color.Gray)
                 }
             },
@@ -253,14 +293,24 @@ fun LoginScreen(
         Spacer(Modifier.height(28.dp))
 
         OutlinedTextField(
-            value = email,
+            value = identifier,
             onValueChange = {
-                email = it
+                identifier = it
                 loginErrorMessage = null
             },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email address") },
+            label = { Text("Email address or User ID") },
+            placeholder = { Text("e.g. user@example.com or User ID", color = Color.Gray) },
             singleLine = true,
+            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp, fontWeight = FontWeight.Normal),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF111816),
+                unfocusedTextColor = Color(0xFF111816),
+                focusedBorderColor = Color(0xFF267D6D),
+                unfocusedBorderColor = Color(0xFFB5C4BE),
+                focusedLabelColor = Color(0xFF184D43),
+                unfocusedLabelColor = Color(0xFF556B64)
+            ),
             shape = RoundedCornerShape(14.dp)
         )
 
@@ -275,7 +325,25 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Password") },
             singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
+            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp, fontWeight = FontWeight.Normal),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color(0xFF111816),
+                unfocusedTextColor = Color(0xFF111816),
+                focusedBorderColor = Color(0xFF267D6D),
+                unfocusedBorderColor = Color(0xFFB5C4BE),
+                focusedLabelColor = Color(0xFF184D43),
+                unfocusedLabelColor = Color(0xFF556B64)
+            ),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        tint = Color(0xFF267D6D)
+                    )
+                }
+            },
             shape = RoundedCornerShape(14.dp)
         )
 
@@ -292,12 +360,17 @@ fun LoginScreen(
 
         Button(
             onClick = {
-                if (email.isBlank() || password.isBlank()) {
-                    loginErrorMessage = "Please enter both email and password."
+                val trimmedId = identifier.trim()
+                if (trimmedId.isBlank()) {
+                    loginErrorMessage = "Please enter your email or user ID."
+                    return@Button
+                }
+                if (password.isBlank()) {
+                    loginErrorMessage = "Please enter your password."
                     return@Button
                 }
                 viewModel.login(
-                    email = email,
+                    email = trimmedId,
                     pass = password,
                     onSuccess = {
                         loginErrorMessage = null

@@ -70,6 +70,7 @@ CREATE TABLE `pets` (
     `microchip_id` VARCHAR(50) NULL,
     `health_score` INT NOT NULL DEFAULT 95,
     `vaccination_status` VARCHAR(100) NOT NULL DEFAULT 'Up to Date',
+    `image_url` VARCHAR(255) NULL,
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -197,5 +198,31 @@ CREATE TABLE `grooming_guides` (
     `category` VARCHAR(100) NOT NULL,
     `steps` TEXT NOT NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 14. User Preferences
+CREATE TABLE `user_preferences` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT UNSIGNED NOT NULL UNIQUE,
+    `notif_vaccination` TINYINT(1) NOT NULL DEFAULT 1,
+    `notif_medication` TINYINT(1) NOT NULL DEFAULT 1,
+    `notif_appointments` TINYINT(1) NOT NULL DEFAULT 1,
+    `theme_mode` VARCHAR(20) NOT NULL DEFAULT 'system',
+    `font_size` VARCHAR(20) NOT NULL DEFAULT 'normal',
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 15. Support Tickets
+CREATE TABLE `support_tickets` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT UNSIGNED NOT NULL,
+    `category` VARCHAR(100) NOT NULL DEFAULT 'General',
+    `subject` VARCHAR(200) NOT NULL,
+    `description` TEXT NOT NULL,
+    `status` VARCHAR(50) NOT NULL DEFAULT 'open',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_support_user` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

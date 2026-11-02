@@ -55,6 +55,7 @@ data class PetDto(
     @SerializedName("microchip_id") val microchipId: String? = "#985142091",
     @SerializedName("health_score") val healthScore: Int = 95,
     @SerializedName("vaccination_status") val vaccinationStatus: String = "Up to Date",
+    @SerializedName("image_url") val imageUrl: String? = null,
     @SerializedName("is_active") val isActive: Int = 1
 )
 
@@ -209,5 +210,27 @@ data class ConditionGuideDto(
 data class SaveReportRequest(
     @SerializedName("report_title") val reportTitle: String,
     @SerializedName("report_data") val reportData: Map<String, Any>? = null
+)
+
+// User Preferences DTO
+data class PreferencesDto(
+    @SerializedName("notif_vaccination") val notifVaccination: Boolean = true,
+    @SerializedName("notif_medication") val notifMedication: Boolean = true,
+    @SerializedName("notif_appointments") val notifAppointments: Boolean = true,
+    @SerializedName("theme_mode") val themeMode: String = "system",
+    @SerializedName("font_size") val fontSize: String = "normal"
+)
+
+// Support Ticket DTO
+data class SupportTicketDto(
+    @SerializedName("ticket_id") val ticketId: Int,
+    @SerializedName("subject") val subject: String,
+    @SerializedName("status") val status: String
+)
+
+// Pet Photo Upload Response DTO
+data class UploadPhotoDto(
+    @SerializedName("image_url") val imageUrl: String,
+    @SerializedName("pet") val pet: PetDto? = null
 )
 

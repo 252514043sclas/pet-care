@@ -65,6 +65,12 @@ fun AddReminderScreen(
                 value = reminderTitle,
                 onValueChange = { reminderTitle = it },
                 label = { Text("Reminder Title (e.g. Bath & Fur Brushing)") },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
+                    unfocusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
+                    focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF184D43),
+                    unfocusedLabelColor = androidx.compose.ui.graphics.Color(0xFF2C3E37)
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
                 singleLine = true
@@ -74,6 +80,12 @@ fun AddReminderScreen(
                 value = reminderDate,
                 onValueChange = { reminderDate = it },
                 label = { Text("Date & Time (e.g. 5:30 PM or Nov 2, 10:00 AM)") },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
+                    unfocusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
+                    focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF184D43),
+                    unfocusedLabelColor = androidx.compose.ui.graphics.Color(0xFF2C3E37)
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
                 singleLine = true
