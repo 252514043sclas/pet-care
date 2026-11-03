@@ -61,26 +61,38 @@ class PetController {
         $petId = (int)$pdo->lastInsertId();
 
         // Add initial weight entry
-        $weightStmt = $pdo->prepare(
-            'INSERT INTO weight_entries (pet_id, user_id, weight_kg, recorded_date, notes, created_at)
-             VALUES (:pet_id, :user_id, :weight_kg, :recorded_date, :notes, NOW())'
-        );
-        $weightStmt->execute([
-            ':pet_id' => $petId,
-            ':user_id' => $currentUser['id'],
-            ':weight_kg' => (float)$input['weight_kg'],
-            ':recorded_date' => date('M j'),
-            ':notes' => 'Initial weight record',
-        ]);
+        try {
+            $weightStmt = $pdo->prepare(
+                'INSERT INTO weight_entries (pet_id, user_id, weight_kg, recorded_date, notes, created_at)
+                 VALUES (:pet_id, :user_id, :weight_kg, :recorded_date, :notes, NOW())'
+            );
+            $weightStmt->execute([
+                ':pet_id' => $petId,
+                ':user_id' => $currentUser['id'],
+                ':weight_kg' => (float)$input['weight_kg'],
+                ':recorded_date' => date('M j'),
+                ':notes' => 'Initial weight record',
+            ]);
+        } catch (\Throwable $e) {
+            // Optional initial weight record
+        }
 
         // Add default feeding schedule for new pet
-        $schedStmt = $pdo->prepare(
-            'INSERT INTO meal_schedules (pet_id, meal_name, scheduled_time, meal_description, calories) VALUES
-             (:pet_id, "Morning", "Morning • 8:00 AM", "2 Cups Premium Kibble / Fresh Timothy Hay", 350),
-             (:pet_id, "Afternoon", "Afternoon • 1:00 PM", "Healthy Snack & Fresh Treat", 100),
-             (:pet_id, "Evening", "Evening • 6:00 PM", "Evening Portion with Greens", 350)'
-        );
-        $schedStmt->execute([':pet_id' => $petId]);
+        try {
+            $schedStmt = $pdo->prepare(
+                'INSERT INTO meal_schedules (pet_id, meal_name, scheduled_time, meal_description, calories, created_at) VALUES
+                 (:p1, "Morning", "Morning • 8:00 AM", "2 Cups Premium Kibble / Fresh Timothy Hay", 350, NOW()),
+                 (:p2, "Afternoon", "Afternoon • 1:00 PM", "Healthy Snack & Fresh Treat", 100, NOW()),
+                 (:p3, "Evening", "Evening • 6:00 PM", "Evening Portion with Greens", 350, NOW())'
+            );
+            $schedStmt->execute([
+                ':p1' => $petId,
+                ':p2' => $petId,
+                ':p3' => $petId,
+            ]);
+        } catch (\Throwable $e) {
+            // Optional initial schedule
+        }
 
         // Fetch newly created pet
         $fetchStmt = $pdo->prepare('SELECT * FROM pets WHERE id = :id');
