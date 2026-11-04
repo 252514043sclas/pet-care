@@ -338,68 +338,38 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.getPets().onSuccess { list ->
                 _allPets.value = list
-                val savedPetId = session.getActivePetId()
-                val matched = list.firstOrNull { it.id == savedPetId } ?: list.firstOrNull { it.isActive == 1 } ?: list.firstOrNull()
-                matched?.let { p ->
-                    val profile = PetProfile(
-                        id = p.id.toString(),
-                        name = p.name,
-                        type = p.species,
-                        breed = p.breed,
-                        age = p.ageYears,
-                        weight = "${p.weightKg} kg",
-                        healthScore = p.healthScore,
-                        gender = p.gender ?: "Female",
-                        microchipId = p.microchipId ?: "#985142091",
-                        vaccinationStatus = p.vaccinationStatus,
-                        imageUrl = p.imageUrl
-                    )
-                    _activePet.value = profile
-                    session.saveActivePetDetails(
-                        id = p.id,
-                        name = p.name,
-                        type = p.species,
-                        breed = p.breed,
-                        age = p.ageYears,
-                        weight = "${p.weightKg} kg",
-                        imageUrl = p.imageUrl,
-                        gender = p.gender ?: "Female",
-                        microchipId = p.microchipId,
-                        healthScore = p.healthScore,
-                        vaccinationStatus = p.vaccinationStatus
-                    )
-                }
             }
         }
     }
 
-    fun selectActivePet(pet: PetDto) {
+    fun selectActivePet(p: PetDto) {
         val profile = PetProfile(
-            id = pet.id.toString(),
-            name = pet.name,
-            type = pet.species,
-            breed = pet.breed,
-            age = pet.ageYears,
-            weight = "${pet.weightKg} kg",
-            healthScore = pet.healthScore,
-            gender = pet.gender ?: "Female",
-            microchipId = pet.microchipId ?: "#985142091",
-            vaccinationStatus = pet.vaccinationStatus,
-            imageUrl = pet.imageUrl
+            id = p.id.toString(),
+            name = p.name,
+            type = p.species,
+            breed = p.breed,
+            age = p.ageYears,
+            weight = "${p.weightKg} kg",
+            healthScore = p.healthScore,
+            gender = p.gender ?: "Female",
+            microchipId = p.microchipId ?: "#985142091",
+            vaccinationStatus = p.vaccinationStatus,
+            imageUrl = p.imageUrl
         )
         _activePet.value = profile
+        session.setActivePetId(p.id)
         session.saveActivePetDetails(
-            id = pet.id,
-            name = pet.name,
-            type = pet.species,
-            breed = pet.breed,
-            age = pet.ageYears,
-            weight = "${pet.weightKg} kg",
-            imageUrl = pet.imageUrl,
-            gender = pet.gender ?: "Female",
-            microchipId = pet.microchipId,
-            healthScore = pet.healthScore,
-            vaccinationStatus = pet.vaccinationStatus
+            id = p.id,
+            name = p.name,
+            type = p.species,
+            breed = p.breed,
+            age = p.ageYears,
+            weight = "${p.weightKg} kg",
+            imageUrl = p.imageUrl,
+            gender = p.gender ?: "Female",
+            microchipId = p.microchipId,
+            healthScore = p.healthScore,
+            vaccinationStatus = p.vaccinationStatus
         )
     }
 
@@ -437,7 +407,7 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             val result = repository.updatePetDetails(petId, request)
             _isLoading.value = false
             result.onSuccess { updated ->
-                val newProfile = PetProfile(
+                _activePet.value = PetProfile(
                     id = updated.id.toString(),
                     name = updated.name,
                     type = updated.species,
@@ -449,20 +419,6 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                     microchipId = updated.microchipId ?: _activePet.value.microchipId,
                     vaccinationStatus = updated.vaccinationStatus,
                     imageUrl = updated.imageUrl ?: _activePet.value.imageUrl
-                )
-                _activePet.value = newProfile
-                session.saveActivePetDetails(
-                    id = updated.id,
-                    name = updated.name,
-                    type = updated.species,
-                    breed = updated.breed,
-                    age = updated.ageYears,
-                    weight = "${updated.weightKg} kg",
-                    imageUrl = newProfile.imageUrl,
-                    gender = updated.gender,
-                    microchipId = updated.microchipId,
-                    healthScore = updated.healthScore,
-                    vaccinationStatus = updated.vaccinationStatus
                 )
                 refreshDashboard()
                 loadAllPets()
@@ -480,39 +436,11 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             _isLoading.value = false
             result.onSuccess { data ->
                 _activePet.value = _activePet.value.copy(imageUrl = data.imageUrl)
-                session.saveActivePetDetails(
-                    id = _activePet.value.id.toIntOrNull() ?: petId,
-                    name = _activePet.value.name,
-                    type = _activePet.value.type,
-                    breed = _activePet.value.breed,
-                    age = _activePet.value.age,
-                    weight = _activePet.value.weight,
-                    imageUrl = data.imageUrl,
-                    gender = _activePet.value.gender,
-                    microchipId = _activePet.value.microchipId,
-                    healthScore = _activePet.value.healthScore,
-                    vaccinationStatus = _activePet.value.vaccinationStatus
-                )
                 refreshDashboard()
                 loadAllPets()
                 onDone(true, "Pet photo updated successfully")
             }.onFailure { err ->
                 onDone(false, err.message ?: "Failed to upload photo")
-            }
-        }
-    }
-
-    fun uploadUserAvatar(base64: String, onDone: (Boolean, String) -> Unit) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val result = repository.uploadUserAvatar(base64)
-            _isLoading.value = false
-            result.onSuccess { avatarUrl ->
-                _userAvatarUrl.value = avatarUrl
-                session.setUserAvatarUrl(avatarUrl)
-                onDone(true, "Profile photo updated successfully")
-            }.onFailure { err ->
-                onDone(false, err.message ?: "Failed to upload profile photo")
             }
         }
     }
@@ -550,6 +478,21 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                 onDone(true, "Profile updated successfully")
             }.onFailure { err ->
                 onDone(false, err.message ?: "Failed to update profile")
+            }
+        }
+    }
+
+    fun uploadUserAvatar(base64: String, onDone: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = repository.uploadUserAvatar(base64)
+            _isLoading.value = false
+            result.onSuccess { avatarUrl ->
+                _userAvatarUrl.value = avatarUrl
+                refreshDashboard()
+                onDone(true, "Avatar updated successfully")
+            }.onFailure { err ->
+                onDone(false, err.message ?: "Failed to upload avatar")
             }
         }
     }
