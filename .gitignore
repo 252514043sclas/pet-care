@@ -20,3 +20,9 @@ local.properties
 # Environment variables
 .env
 *.env
+
+# Backend uploads
+backend/public/uploads/pets/*
+!backend/public/uploads/pets/.gitkeep
+backend/public/uploads/avatars/*
+!backend/public/uploads/avatars/.gitkeep

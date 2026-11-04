@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kavya.petcare.ui.EmeraldDark
 import com.kavya.petcare.ui.MintSage
+import com.kavya.petcare.ui.components.PetAvatar
+import com.kavya.petcare.ui.components.UserAvatar
 import com.kavya.petcare.ui.theme.PetCareTheme
 import kotlinx.coroutines.launch
 
@@ -323,18 +325,15 @@ fun HomeTabScreen(
                     }
                 }
 
-                Surface(
+                val userAvatarUrl by viewModel.userAvatarUrl.collectAsState()
+                UserAvatar(
+                    avatarUrl = userAvatarUrl,
+                    userName = "User",
+                    shadowElevation = 4.dp,
                     modifier = Modifier
                         .size(46.dp)
-                        .clickable { onNavigateProfile() },
-                    shape = CircleShape,
-                    color = Color.White,
-                    shadowElevation = 4.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Person, contentDescription = "Profile", tint = MintSage, modifier = Modifier.size(24.dp))
-                    }
-                }
+                        .clickable { onNavigateSettings() }
+                )
             }
         }
 
@@ -363,15 +362,13 @@ fun HomeTabScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        modifier = Modifier.size(64.dp),
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.25f)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Star, contentDescription = "Pet", tint = Color.White, modifier = Modifier.size(32.dp))
-                        }
-                    }
+                    PetAvatar(
+                        imageUrl = activePet.imageUrl,
+                        species = activePet.type,
+                        petName = activePet.name,
+                        shadowElevation = 4.dp,
+                        modifier = Modifier.size(64.dp)
+                    )
 
                     Spacer(Modifier.width(18.dp))
 
@@ -664,18 +661,15 @@ fun ProfileTabScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(16.dp))
-        Surface(
+        PetAvatar(
+            imageUrl = activePet.imageUrl,
+            species = activePet.type,
+            petName = activePet.name,
+            shadowElevation = 6.dp,
             modifier = Modifier
                 .size(100.dp)
-                .clickable { onNavigateProfile() },
-            shape = CircleShape,
-            color = Color(0xFFE8F5F2),
-            shadowElevation = 6.dp
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Person, contentDescription = "Profile", tint = MintSage, modifier = Modifier.size(52.dp))
-            }
-        }
+                .clickable { onNavigateProfile() }
+        )
         Spacer(Modifier.height(16.dp))
         Text(activePet.name, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
         Text("${activePet.breed} ${activePet.type} · ${activePet.age}", fontSize = 15.sp, color = Color.Gray)

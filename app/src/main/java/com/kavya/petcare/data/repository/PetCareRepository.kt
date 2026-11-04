@@ -52,6 +52,24 @@ class PetCareRepository(private val context: Context) {
                     email = authData.user.email,
                     activePetId = authData.activePet?.id
                 )
+                if (!authData.user.avatarUrl.isNullOrBlank()) {
+                    session.setUserAvatarUrl(authData.user.avatarUrl)
+                }
+                authData.activePet?.let { p ->
+                    session.saveActivePetDetails(
+                        id = p.id,
+                        name = p.name,
+                        type = p.species,
+                        breed = p.breed,
+                        age = p.ageYears,
+                        weight = "${p.weightKg} kg",
+                        imageUrl = p.imageUrl,
+                        gender = p.gender,
+                        microchipId = p.microchipId,
+                        healthScore = p.healthScore,
+                        vaccinationStatus = p.vaccinationStatus
+                    )
+                }
                 Result.success(authData)
             } else {
                 val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Login failed. Please verify credentials.")
@@ -111,10 +129,12 @@ class PetCareRepository(private val context: Context) {
                     val name = userMap["name"] as? String
                     val email = userMap["email"] as? String
                     val id = (userMap["id"] as? Number)?.toInt()
+                    val avatarUrl = userMap["avatar_url"] as? String
                     session.updateUserInfo(
                         userId = id,
                         userName = name,
-                        email = email
+                        email = email,
+                        avatarUrl = avatarUrl
                     )
                 }
                 true
@@ -149,7 +169,24 @@ class PetCareRepository(private val context: Context) {
             val response = api.getDashboard()
             if (response.isSuccessful && response.body()?.success == true) {
                 val data = response.body()!!.data!!
-                data.activePet?.id?.let { session.setActivePetId(it) }
+                data.activePet?.let { p ->
+                    session.saveActivePetDetails(
+                        id = p.id,
+                        name = p.name,
+                        type = p.species,
+                        breed = p.breed,
+                        age = p.ageYears,
+                        weight = "${p.weightKg} kg",
+                        imageUrl = p.imageUrl,
+                        gender = p.gender,
+                        microchipId = p.microchipId,
+                        healthScore = p.healthScore,
+                        vaccinationStatus = p.vaccinationStatus
+                    )
+                }
+                if (!data.user?.avatarUrl.isNullOrBlank()) {
+                    session.setUserAvatarUrl(data.user?.avatarUrl)
+                }
                 Result.success(data)
             } else {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load dashboard"))
@@ -486,9 +523,29 @@ class PetCareRepository(private val context: Context) {
                     email = user.email,
                     activePetId = session.getActivePetId()
                 )
+                if (!user.avatarUrl.isNullOrBlank()) {
+                    session.setUserAvatarUrl(user.avatarUrl)
+                }
                 Result.success(user)
             } else {
                 val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update profile")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun uploadUserAvatar(base64Image: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.uploadUserAvatar(UploadPhotoRequest(imageBase64 = base64Image))
+            if (response.isSuccessful && response.body()?.success == true) {
+                val data = response.body()!!.data
+                val avatarUrl = data?.get("avatar_url") as? String ?: ""
+                session.setUserAvatarUrl(avatarUrl)
+                Result.success(avatarUrl)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to upload avatar")
                 Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {

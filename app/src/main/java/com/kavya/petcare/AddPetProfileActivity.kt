@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.components.PetAvatar
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class AddPetProfileActivity : ComponentActivity() {
@@ -77,7 +78,17 @@ fun AddPetProfileScreen(
             fontSize = 15.sp
         )
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(18.dp))
+
+        PetAvatar(
+            imageUrl = null,
+            species = initialType,
+            petName = petName,
+            modifier = Modifier.size(76.dp),
+            shadowElevation = 3.dp
+        )
+
+        Spacer(Modifier.height(20.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),

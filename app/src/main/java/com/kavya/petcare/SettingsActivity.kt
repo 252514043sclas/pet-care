@@ -3,12 +3,17 @@ package com.kavya.petcare
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Base64
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,7 +43,11 @@ import com.kavya.petcare.data.models.PetDto
 import com.kavya.petcare.data.session.SessionManager
 import com.kavya.petcare.ui.EmeraldDark
 import com.kavya.petcare.ui.MintSage
+import com.kavya.petcare.ui.components.PetAvatar
+import com.kavya.petcare.ui.components.UserAvatar
 import com.kavya.petcare.ui.theme.PetCareTheme
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 
 class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -88,6 +97,42 @@ fun SettingsScreen(
     var petToDelete by remember { mutableStateOf<PetDto?>(null) }
     var petToEdit by remember { mutableStateOf<PetDto?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
+    var showAvatarChooserDialog by remember { mutableStateOf(false) }
+    val userAvatarUrl by viewModel.userAvatarUrl.collectAsState()
+
+    fun uploadUserBitmap(bitmap: Bitmap) {
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+        val byteArray = stream.toByteArray()
+        val base64 = "data:image/jpeg;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+        viewModel.uploadUserAvatar(base64) { success, msg ->
+            statusMessage = msg
+        }
+    }
+
+    val userGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val inputStream: InputStream? = context.contentResolver.openInputStream(uri)
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                if (bitmap != null) {
+                    uploadUserBitmap(bitmap)
+                }
+            } catch (e: Exception) {
+                statusMessage = "Could not load image: ${e.localizedMessage}"
+            }
+        }
+    }
+
+    val userCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) {
+            uploadUserBitmap(bitmap)
+        }
+    }
 
     // Read version info
     val versionName = remember {
@@ -478,6 +523,56 @@ fun SettingsScreen(
     }
 
     // ------------------------------------------------------------------------
+    // Dialog: Avatar Photo Chooser
+    // ------------------------------------------------------------------------
+    if (showAvatarChooserDialog) {
+        AlertDialog(
+            onDismissRequest = { showAvatarChooserDialog = false },
+            title = {
+                Text(
+                    text = "Profile Photo",
+                    fontWeight = FontWeight.Bold,
+                    color = EmeraldDark
+                )
+            },
+            text = {
+                Text(
+                    text = "Choose a photo source for your account profile:",
+                    color = Color(0xFF2D3748)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showAvatarChooserDialog = false
+                        userGalleryLauncher.launch("image/*")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MintSage)
+                ) {
+                    Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Gallery")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        showAvatarChooserDialog = false
+                        userCameraLauncher.launch(null)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark)
+                ) {
+                    Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Camera")
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // ------------------------------------------------------------------------
     // Main Settings Layout
     // ------------------------------------------------------------------------
     Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF6F8F3)) {
@@ -538,10 +633,49 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(text = session.getUserName(), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color(0xFF111816))
-                    Text(text = "${session.getUserEmail()}  •  ID #${session.getUserId()}", fontSize = 13.sp, color = Color(0xFF556B64))
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(contentAlignment = Alignment.BottomEnd) {
+                            UserAvatar(
+                                avatarUrl = userAvatarUrl,
+                                userName = session.getUserName(),
+                                shadowElevation = 2.dp,
+                                modifier = Modifier
+                                    .size(62.dp)
+                                    .clickable { showAvatarChooserDialog = true }
+                            )
+                            Surface(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickable { showAvatarChooserDialog = true },
+                                shape = CircleShape,
+                                color = Color(0xFF267D6D),
+                                shadowElevation = 2.dp
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = "Change Photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = session.getUserName(), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color(0xFF111816))
+                            Text(text = "${session.getUserEmail()}  •  ID #${session.getUserId()}", fontSize = 13.sp, color = Color(0xFF556B64))
+                        }
+                    }
+
                     HorizontalDivider(color = Color(0xFFF0F4F1))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -581,17 +715,52 @@ fun SettingsScreen(
                     if (allPets.isEmpty()) {
                         Text("No pets loaded yet.", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
                     } else {
+                        val activePetId = session.getActivePetId()
                         allPets.forEachIndexed { index, pet ->
+                            val isActive = pet.id == activePetId
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.selectActivePet(pet)
+                                        statusMessage = "${pet.name} is now your active pet."
+                                    }
                                     .padding(vertical = 8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column {
-                                    Text(pet.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF111816))
-                                    Text("${pet.species} • ${pet.breed} • ${pet.weightKg} kg", fontSize = 12.sp, color = Color(0xFF556B64))
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    PetAvatar(
+                                        imageUrl = pet.imageUrl,
+                                        species = pet.species,
+                                        petName = pet.name,
+                                        modifier = Modifier.size(46.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(pet.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF111816))
+                                            if (isActive) {
+                                                Spacer(Modifier.width(6.dp))
+                                                Surface(
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = Color(0xFFE8F5F2)
+                                                ) {
+                                                    Text(
+                                                        "ACTIVE",
+                                                        fontSize = 10.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF184D43),
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Text("${pet.species} • ${pet.breed} • ${pet.weightKg} kg", fontSize = 12.sp, color = Color(0xFF556B64))
+                                    }
                                 }
                                 Row {
                                     IconButton(onClick = { petToDelete = pet }) {

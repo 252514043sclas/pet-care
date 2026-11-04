@@ -323,4 +323,51 @@ class AuthController {
 
         Response::success(null, 'Password updated successfully');
     }
+
+    public function uploadAvatar(array $currentUser, array $input): void {
+        $uploadDir = dirname(__DIR__, 2) . '/public/uploads/avatars/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+
+        $imageBinary = null;
+        $extension = 'jpg';
+
+        if (!empty($_FILES['image']['tmp_name']) && is_uploaded_file($_FILES['image']['tmp_name'])) {
+            $imageBinary = file_get_contents($_FILES['image']['tmp_name']);
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $_FILES['image']['tmp_name']);
+            finfo_close($finfo);
+            if ($mime === 'image/png') $extension = 'png';
+            elseif ($mime === 'image/webp') $extension = 'webp';
+        } elseif (!empty($input['image_base64'])) {
+            $data = $input['image_base64'];
+            if (preg_match('#^data:image/(\w+);base64,#i', $data, $matches)) {
+                $extension = strtolower($matches[1]) === 'png' ? 'png' : 'jpg';
+                $data = substr($data, strpos($data, ',') + 1);
+            }
+            $imageBinary = base64_decode($data);
+        }
+
+        if (!$imageBinary) {
+            Response::error('No valid image provided.', 400);
+        }
+
+        $filename = 'user_' . $currentUser['id'] . '_' . time() . '.' . $extension;
+        file_put_contents($uploadDir . $filename, $imageBinary);
+
+        $relativeUrl = 'uploads/avatars/' . $filename;
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('UPDATE users SET avatar_url = :url, updated_at = NOW() WHERE id = :id');
+        $stmt->execute([':url' => $relativeUrl, ':id' => $currentUser['id']]);
+
+        $fetchStmt = $pdo->prepare('SELECT id, name, email, avatar_url FROM users WHERE id = :id');
+        $fetchStmt->execute([':id' => $currentUser['id']]);
+        $updatedUser = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+        Response::success([
+            'avatar_url' => $relativeUrl,
+            'user' => $updatedUser,
+        ], 'Profile photo updated successfully');
+    }
 }

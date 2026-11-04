@@ -40,6 +40,11 @@ interface PetCareApiService {
     @POST("auth/logout")
     suspend fun logout(): Response<ApiResponse<Unit>>
 
+    @POST("auth/avatar")
+    suspend fun uploadUserAvatar(
+        @Body request: UploadPhotoRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
     // ----------------------------------------------------
     // Dashboard
     // ----------------------------------------------------

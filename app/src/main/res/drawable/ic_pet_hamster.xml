@@ -1,0 +1,46 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Hamster / Small Pet Face -->
+    <!-- Left ear -->
+    <path
+        android:fillColor="#FFF57F17"
+        android:pathData="M6,7m-2.5,0a2.5,2.5 0 1,0 5,0a2.5,2.5 0 1,0 -5,0"/>
+    <path
+        android:fillColor="#FFFFCC80"
+        android:pathData="M6,7m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0"/>
+    <!-- Right ear -->
+    <path
+        android:fillColor="#FFF57F17"
+        android:pathData="M18,7m-2.5,0a2.5,2.5 0 1,0 5,0a2.5,2.5 0 1,0 -5,0"/>
+    <path
+        android:fillColor="#FFFFCC80"
+        android:pathData="M18,7m-1.5,0a1.5,1.5 0 1,0 3,0a1.5,1.5 0 1,0 -3,0"/>
+    <!-- Head & Chubby Cheeks -->
+    <path
+        android:fillColor="#FFF9A825"
+        android:pathData="M12,6c-3.8,0 -7,2.8 -7,6.5c0,3 2,5.2 4.5,6c1.2,0.8 2.8,1 4.5,1s3.3,-0.2 4.5,-1c2.5,-0.8 4.5,-3 4.5,-6C22.5,8.8 15.8,6 12,6z"/>
+    <!-- White belly/cheek patches -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,13.5c-2.5,0 -4,1.8 -4,3.5c0,1.5 1.8,2.5 4,2.5s4,-1 4,-2.5C16,15.3 14.5,13.5 12,13.5z"/>
+    <!-- Eyes -->
+    <path
+        android:fillColor="#FF212121"
+        android:pathData="M8.5,11.5m-1.1,0a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8.2,11.2m-0.4,0a0.4,0.4 0 1,0 0.8,0a0.4,0.4 0 1,0 -0.8,0"/>
+    <path
+        android:fillColor="#FF212121"
+        android:pathData="M15.5,11.5m-1.1,0a1.1,1.1 0 1,0 2.2,0a1.1,1.1 0 1,0 -2.2,0"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15.2,11.2m-0.4,0a0.4,0.4 0 1,0 0.8,0a0.4,0.4 0 1,0 -0.8,0"/>
+    <!-- Pink Nose -->
+    <path
+        android:fillColor="#FFFF8A80"
+        android:pathData="M12,14.5m-0.8,0a0.8,0.6 0 1,0 1.6,0a0.8,0.6 0 1,0 -1.6,0"/>
+</vector>

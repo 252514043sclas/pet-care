@@ -128,6 +128,10 @@ try {
         (new AuthController())->logout($user);
     }
 
+    if ($requestMethod === 'POST' && $uri === '/api/auth/avatar') {
+        (new AuthController())->uploadAvatar($user, $input);
+    }
+
     // User Preferences (Notifications, Theme, Font Size)
     if ($requestMethod === 'GET' && $uri === '/api/user/preferences') {
         (new PreferenceController())->getPreferences($user);

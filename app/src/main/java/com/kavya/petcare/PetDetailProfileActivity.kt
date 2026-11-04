@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kavya.petcare.ui.EmeraldDark
 import com.kavya.petcare.ui.MintSage
+import com.kavya.petcare.ui.components.PetAvatar
+import com.kavya.petcare.ui.components.PetImageLoader
 import com.kavya.petcare.ui.theme.PetCareTheme
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -115,6 +117,7 @@ fun PetDetailProfileScreen(
         bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
         val byteArray = stream.toByteArray()
         val base64 = "data:image/jpeg;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+        PetImageLoader.cacheBitmap(base64, bitmap)
         val petId = activePet.id.toIntOrNull() ?: 1
         viewModel.uploadPetPhoto(petId, base64) { success, msg ->
             userMessage = msg
@@ -546,14 +549,12 @@ fun PetDetailProfileScreen(
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Pets,
-                                contentDescription = "Pet Avatar",
-                                tint = MintSage,
-                                modifier = Modifier.size(54.dp)
-                            )
-                        }
+                        PetAvatar(
+                            imageUrl = activePet.imageUrl,
+                            species = activePet.type,
+                            petName = activePet.name,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
                 }
 

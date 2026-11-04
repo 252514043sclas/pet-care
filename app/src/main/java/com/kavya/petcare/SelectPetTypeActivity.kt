@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,12 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,9 +25,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.R
 import com.kavya.petcare.ui.EmeraldDark
 import com.kavya.petcare.ui.MintSage
 import com.kavya.petcare.ui.theme.PetCareTheme
@@ -69,12 +66,12 @@ fun SelectPetTypeScreen(
 ) {
     var selectedType by remember { mutableStateOf("Dog") }
     val petTypes = listOf(
-        Triple("Dog", "Loyal companion", Icons.Default.Pets),
-        Triple("Cat", "Independent & playful", Icons.Default.Favorite),
-        Triple("Rabbit", "Gentle hopper", Icons.Default.Star),
-        Triple("Bird", "Cheerful singer", Icons.Default.Notifications),
-        Triple("Hamster", "Curious explorer", Icons.Default.Add),
-        Triple("Other", "Special friend", Icons.Default.Person)
+        Triple("Dog", "Loyal companion", R.drawable.ic_pet_dog),
+        Triple("Cat", "Independent & playful", R.drawable.ic_pet_cat),
+        Triple("Rabbit", "Gentle hopper", R.drawable.ic_pet_rabbit),
+        Triple("Bird", "Cheerful singer", R.drawable.ic_pet_bird),
+        Triple("Hamster", "Curious explorer", R.drawable.ic_pet_hamster),
+        Triple("Other", "Special friend", R.drawable.ic_pet_default)
     )
 
     Column(
@@ -157,14 +154,13 @@ fun SelectPetTypeScreen(
                             modifier = Modifier
                                 .size(50.dp)
                                 .clip(CircleShape)
-                                .background(if (isSelected) MintSage.copy(alpha = 0.2f) else Color(0xFFF0F4F1)),
+                                .background(if (isSelected) MintSage.copy(alpha = 0.25f) else Color(0xFFF0F4F1)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = icon,
+                            Image(
+                                painter = painterResource(id = icon),
                                 contentDescription = type,
-                                tint = if (isSelected) EmeraldDark else Color.Gray,
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(30.dp)
                             )
                         }
                         Spacer(Modifier.height(12.dp))
