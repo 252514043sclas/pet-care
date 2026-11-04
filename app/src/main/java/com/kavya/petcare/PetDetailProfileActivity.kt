@@ -83,6 +83,7 @@ fun PetDetailProfileScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
     var userMessage by remember { mutableStateOf<String?>(null) }
     var localPreviewBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isSavingPet by remember { mutableStateOf(false) }
 
     // Edit form states
     var editName by remember(activePet) { mutableStateOf(activePet.name) }
@@ -93,6 +94,19 @@ fun PetDetailProfileScreen(
     var editGender by remember(activePet) { mutableStateOf(activePet.gender) }
     var editMicrochip by remember(activePet) { mutableStateOf(activePet.microchipId) }
     var editError by remember { mutableStateOf<String?>(null) }
+
+    fun openEditDialog() {
+        editName = activePet.name
+        editBreed = activePet.breed
+        editType = activePet.type
+        editAge = activePet.age
+        editWeight = activePet.weight.replace(" kg", "")
+        editGender = activePet.gender
+        editMicrochip = activePet.microchipId
+        editError = null
+        isSavingPet = false
+        showEditDialog = true
+    }
 
     // Image helper: convert bitmap to base64
     fun uploadBitmap(bitmap: Bitmap) {
@@ -139,8 +153,10 @@ fun PetDetailProfileScreen(
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = {
-                showEditDialog = false
-                editError = null
+                if (!isSavingPet) {
+                    showEditDialog = false
+                    editError = null
+                }
             },
             title = {
                 Text(
@@ -270,36 +286,61 @@ fun PetDetailProfileScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (editName.isBlank() || editBreed.isBlank() || editType.isBlank()) {
+                        val trimmedName = editName.trim()
+                        val trimmedType = editType.trim()
+                        val trimmedBreed = editBreed.trim()
+                        if (trimmedName.isBlank() || trimmedBreed.isBlank() || trimmedType.isBlank()) {
                             editError = "Please fill in all required fields (Name, Type, Breed)."
                             return@Button
                         }
-                        val petId = activePet.id.toIntOrNull() ?: 1
+                        val petId = activePet.id.toIntOrNull()?.takeIf { it > 0 }
+                            ?: com.kavya.petcare.data.session.SessionManager.getInstance(context).getActivePetId()
+                        isSavingPet = true
+                        editError = null
                         viewModel.editPetProfile(
                             petId = petId,
-                            name = editName,
-                            breed = editBreed,
+                            name = trimmedName,
+                            breed = trimmedBreed,
                             age = editAge,
                             weight = editWeight,
-                            type = editType,
+                            type = trimmedType,
                             gender = editGender,
                             microchipId = editMicrochip,
                             onSuccess = {
+                                isSavingPet = false
                                 showEditDialog = false
                                 userMessage = "Pet profile updated successfully!"
                             },
                             onError = { err ->
+                                isSavingPet = false
                                 editError = err
                             }
                         )
                     },
+                    enabled = !isSavingPet,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D))
                 ) {
-                    Text("Save Changes")
+                    if (isSavingPet) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Save Changes")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) {
+                TextButton(
+                    onClick = {
+                        if (!isSavingPet) {
+                            showEditDialog = false
+                            editError = null
+                        }
+                    },
+                    enabled = !isSavingPet
+                ) {
                     Text("Cancel", color = Color.Gray)
                 }
             },
@@ -437,7 +478,7 @@ fun PetDetailProfileScreen(
                 }
 
                 Row {
-                    IconButton(onClick = { showEditDialog = true }) {
+                    IconButton(onClick = { openEditDialog() }) {
                         Icon(
                             imageVector = Icons.Default.Edit,
                             contentDescription = "Edit Profile",
@@ -606,7 +647,7 @@ fun PetDetailProfileScreen(
 
             // Action Buttons
             Button(
-                onClick = { showEditDialog = true },
+                onClick = { openEditDialog() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),

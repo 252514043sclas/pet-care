@@ -29,12 +29,12 @@ interface PetCareApiService {
 
     @PUT("auth/profile")
     suspend fun updateProfile(
-        @Body request: Map<String, String>
+        @Body request: UpdateProfileRequest
     ): Response<ApiResponse<UserDto>>
 
     @PUT("auth/password")
     suspend fun changePassword(
-        @Body request: Map<String, String>
+        @Body request: ChangePasswordRequest
     ): Response<ApiResponse<Unit>>
 
     @POST("auth/logout")
@@ -65,7 +65,7 @@ interface PetCareApiService {
     @PUT("pets/{id}")
     suspend fun updatePet(
         @Path("id") petId: Int,
-        @Body request: Map<String, Any>
+        @Body request: UpdatePetRequest
     ): Response<ApiResponse<PetDto>>
 
     @DELETE("pets/{id}")
@@ -76,7 +76,7 @@ interface PetCareApiService {
     @POST("pets/{id}/photo")
     suspend fun uploadPetPhoto(
         @Path("id") petId: Int,
-        @Body request: Map<String, String>
+        @Body request: UploadPhotoRequest
     ): Response<ApiResponse<UploadPhotoDto>>
 
     @GET("pets/{id}/weights")
@@ -164,12 +164,12 @@ interface PetCareApiService {
 
     @PUT("user/preferences")
     suspend fun updatePreferences(
-        @Body request: Map<String, Any>
+        @Body request: UpdatePreferencesRequest
     ): Response<ApiResponse<PreferencesDto>>
 
     @POST("support/report")
     suspend fun submitSupportReport(
-        @Body request: Map<String, String>
+        @Body request: SupportReportRequest
     ): Response<ApiResponse<SupportTicketDto>>
 }
 

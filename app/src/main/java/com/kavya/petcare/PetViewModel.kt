@@ -295,27 +295,37 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch {
             _isLoading.value = true
-            val weightKg = weight.replace("kg", "").trim().toDoubleOrNull() ?: 1.8
-            val fields = mapOf<String, Any>(
-                "name" to name.trim(),
-                "breed" to breed.trim(),
-                "age_years" to age.trim(),
-                "weight_kg" to weightKg,
-                "species" to type.trim(),
-                "gender" to gender.trim(),
-                "microchip_id" to microchipId.trim()
+            val cleanedWeight = weight.replace(Regex("(?i)kg"), "").trim()
+            val weightKg = cleanedWeight.toDoubleOrNull() ?: 1.8
+            val trimmedAge = age.trim()
+            val formattedAge = if (trimmedAge.isNotBlank() && !trimmedAge.contains(Regex("[a-zA-Z]"))) {
+                "$trimmedAge yrs"
+            } else {
+                trimmedAge
+            }
+            val request = UpdatePetRequest(
+                name = name.trim(),
+                species = type.trim(),
+                breed = breed.trim(),
+                ageYears = formattedAge,
+                weightKg = weightKg,
+                gender = gender.trim().ifBlank { "Female" },
+                microchipId = microchipId.trim().ifBlank { null }
             )
-            val result = repository.updatePetDetails(petId, fields)
+            val result = repository.updatePetDetails(petId, request)
             _isLoading.value = false
             result.onSuccess { updated ->
-                _activePet.value = _activePet.value.copy(
+                _activePet.value = PetProfile(
+                    id = updated.id.toString(),
                     name = updated.name,
+                    type = updated.species,
                     breed = updated.breed,
                     age = updated.ageYears,
                     weight = "${updated.weightKg} kg",
-                    type = updated.species,
+                    healthScore = updated.healthScore,
                     gender = updated.gender,
                     microchipId = updated.microchipId ?: _activePet.value.microchipId,
+                    vaccinationStatus = updated.vaccinationStatus,
                     imageUrl = updated.imageUrl ?: _activePet.value.imageUrl
                 )
                 refreshDashboard()
@@ -402,8 +412,19 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun updatePreferences(map: Map<String, Any>, onDone: ((Boolean, String) -> Unit)? = null) {
+        val req = UpdatePreferencesRequest(
+            notifVaccination = map["notif_vaccination"] as? Boolean,
+            notifMedication = map["notif_medication"] as? Boolean,
+            notifAppointments = map["notif_appointments"] as? Boolean,
+            themeMode = map["theme_mode"] as? String,
+            fontSize = map["font_size"] as? String
+        )
+        updatePreferences(req, onDone)
+    }
+
+    fun updatePreferences(request: UpdatePreferencesRequest, onDone: ((Boolean, String) -> Unit)? = null) {
         viewModelScope.launch {
-            val result = repository.updatePreferences(map)
+            val result = repository.updatePreferences(request)
             result.onSuccess { updated ->
                 _preferences.value = updated
                 onDone?.invoke(true, "Preferences updated")

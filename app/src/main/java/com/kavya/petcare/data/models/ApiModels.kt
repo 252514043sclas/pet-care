@@ -69,6 +69,20 @@ data class CreatePetRequest(
     @SerializedName("microchip_id") val microchipId: String? = null
 )
 
+data class UpdatePetRequest(
+    @SerializedName("name") val name: String? = null,
+    @SerializedName("species") val species: String? = null,
+    @SerializedName("breed") val breed: String? = null,
+    @SerializedName("age_years") val ageYears: String? = null,
+    @SerializedName("weight_kg") val weightKg: Double? = null,
+    @SerializedName("gender") val gender: String? = null,
+    @SerializedName("microchip_id") val microchipId: String? = null,
+    @SerializedName("health_score") val healthScore: Int? = null,
+    @SerializedName("vaccination_status") val vaccinationStatus: String? = null,
+    @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("is_active") val isActive: Int? = null
+)
+
 // Dashboard Data
 data class DashboardData(
     @SerializedName("user") val user: UserDto?,
@@ -219,6 +233,34 @@ data class PreferencesDto(
     @SerializedName("notif_appointments") val notifAppointments: Boolean = true,
     @SerializedName("theme_mode") val themeMode: String = "system",
     @SerializedName("font_size") val fontSize: String = "normal"
+)
+
+data class UpdatePreferencesRequest(
+    @SerializedName("notif_vaccination") val notifVaccination: Boolean? = null,
+    @SerializedName("notif_medication") val notifMedication: Boolean? = null,
+    @SerializedName("notif_appointments") val notifAppointments: Boolean? = null,
+    @SerializedName("theme_mode") val themeMode: String? = null,
+    @SerializedName("font_size") val fontSize: String? = null
+)
+
+data class UpdateProfileRequest(
+    @SerializedName("name") val name: String,
+    @SerializedName("email") val email: String
+)
+
+data class ChangePasswordRequest(
+    @SerializedName("current_password") val currentPassword: String,
+    @SerializedName("new_password") val newPassword: String
+)
+
+data class UploadPhotoRequest(
+    @SerializedName("image_base64") val imageBase64: String
+)
+
+data class SupportReportRequest(
+    @SerializedName("category") val category: String,
+    @SerializedName("subject") val subject: String,
+    @SerializedName("description") val description: String
 )
 
 // Support Ticket DTO

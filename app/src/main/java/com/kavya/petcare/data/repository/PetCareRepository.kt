@@ -428,9 +428,9 @@ class PetCareRepository(private val context: Context) {
     // ----------------------------------------------------
     // Pet Modifications & Photo Upload
     // ----------------------------------------------------
-    suspend fun updatePetDetails(id: Int, fields: Map<String, Any>): Result<PetDto> = withContext(Dispatchers.IO) {
+    suspend fun updatePetDetails(id: Int, request: UpdatePetRequest): Result<PetDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.updatePet(id, fields)
+            val response = api.updatePet(id, request)
             if (response.isSuccessful && response.body()?.success == true) {
                 val updatedPet = response.body()!!.data!!
                 Result.success(updatedPet)
@@ -459,7 +459,7 @@ class PetCareRepository(private val context: Context) {
 
     suspend fun uploadPetPhoto(id: Int, base64Image: String): Result<UploadPhotoDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.uploadPetPhoto(id, mapOf("image_base64" to base64Image))
+            val response = api.uploadPetPhoto(id, UploadPhotoRequest(imageBase64 = base64Image))
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(response.body()!!.data!!)
             } else {
@@ -476,7 +476,7 @@ class PetCareRepository(private val context: Context) {
     // ----------------------------------------------------
     suspend fun updateProfile(name: String, email: String): Result<UserDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.updateProfile(mapOf("name" to name.trim(), "email" to email.trim()))
+            val response = api.updateProfile(UpdateProfileRequest(name = name.trim(), email = email.trim()))
             if (response.isSuccessful && response.body()?.success == true) {
                 val user = response.body()!!.data!!
                 session.saveAuthSession(
@@ -498,7 +498,7 @@ class PetCareRepository(private val context: Context) {
 
     suspend fun changePassword(currentPass: String, newPass: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = api.changePassword(mapOf("current_password" to currentPass, "new_password" to newPass))
+            val response = api.changePassword(ChangePasswordRequest(currentPassword = currentPass, newPassword = newPass))
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(Unit)
             } else {
@@ -523,7 +523,7 @@ class PetCareRepository(private val context: Context) {
         }
     }
 
-    suspend fun updatePreferences(preferences: Map<String, Any>): Result<PreferencesDto> = withContext(Dispatchers.IO) {
+    suspend fun updatePreferences(preferences: UpdatePreferencesRequest): Result<PreferencesDto> = withContext(Dispatchers.IO) {
         try {
             val response = api.updatePreferences(preferences)
             if (response.isSuccessful && response.body()?.success == true) {
@@ -539,10 +539,10 @@ class PetCareRepository(private val context: Context) {
 
     suspend fun submitSupportReport(category: String, subject: String, description: String): Result<SupportTicketDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.submitSupportReport(mapOf(
-                "category" to category.trim(),
-                "subject" to subject.trim(),
-                "description" to description.trim()
+            val response = api.submitSupportReport(SupportReportRequest(
+                category = category.trim(),
+                subject = subject.trim(),
+                description = description.trim()
             ))
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(response.body()!!.data!!)
