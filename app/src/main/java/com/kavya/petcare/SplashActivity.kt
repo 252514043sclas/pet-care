@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -19,22 +19,72 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.data.repository.PetCareRepository
+import com.kavya.petcare.data.session.SessionManager
 import com.kavya.petcare.ui.EmeraldDark
 import com.kavya.petcare.ui.MintSage
 import com.kavya.petcare.ui.theme.PetCareTheme
+import kotlinx.coroutines.delay
 
 class SplashActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val session = SessionManager.getInstance(this)
+        val repository = PetCareRepository(this)
+
         setContent {
             PetCareTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
+                    val isCheckingSession by remember { mutableStateOf(session.isLoggedIn()) }
+
                     SplashScreen(
+                        isCheckingSession = isCheckingSession,
                         onGetStarted = {
-                            startActivity(Intent(this@SplashActivity, OnboardingActivity::class.java))
+                            val targetClass = if (session.isOnboardingCompleted()) {
+                                LoginActivity::class.java
+                            } else {
+                                OnboardingActivity::class.java
+                            }
+                            val intent = Intent(this@SplashActivity, targetClass).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                            startActivity(intent)
                             finish()
                         }
                     )
+
+                    LaunchedEffect(Unit) {
+                        if (session.isLoggedIn()) {
+                            val startTime = System.currentTimeMillis()
+                            val isValid = repository.validateSession()
+                            val elapsed = System.currentTimeMillis() - startTime
+                            val remainingDelay = (700L - elapsed).coerceAtLeast(0L)
+                            delay(remainingDelay)
+
+                            if (isValid && session.isLoggedIn()) {
+                                val intent = Intent(this@SplashActivity, HomeDashboardActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                                startActivity(intent)
+                                finish()
+                            } else {
+                                val intent = Intent(this@SplashActivity, LoginActivity::class.java).apply {
+                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                }
+                                startActivity(intent)
+                                finish()
+                            }
+                        } else if (session.isOnboardingCompleted()) {
+                            delay(900L)
+                            val intent = Intent(this@SplashActivity, LoginActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                            startActivity(intent)
+                            finish()
+                        }
+                    }
                 }
             }
         }
@@ -42,7 +92,10 @@ class SplashActivity : ComponentActivity() {
 }
 
 @Composable
-fun SplashScreen(onGetStarted: () -> Unit) {
+fun SplashScreen(
+    isCheckingSession: Boolean = false,
+    onGetStarted: () -> Unit
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -101,22 +154,36 @@ fun SplashScreen(onGetStarted: () -> Unit) {
 
             Spacer(Modifier.height(56.dp))
 
-            Button(
-                onClick = onGetStarted,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = EmeraldDark
-                ),
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Text(
-                    "Get Started",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+            if (isCheckingSession) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.height(56.dp),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 3.dp
+                    )
+                }
+            } else {
+                Button(
+                    onClick = onGetStarted,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = EmeraldDark
+                    ),
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                ) {
+                    Text(
+                        "Get Started",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
             }
         }
 

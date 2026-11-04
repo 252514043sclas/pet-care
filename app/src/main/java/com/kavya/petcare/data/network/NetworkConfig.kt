@@ -86,7 +86,15 @@ object NetworkConfig {
                 requestBuilder.header("Authorization", "Bearer $token")
             }
 
-            chain.proceed(requestBuilder.build())
+            val response = chain.proceed(requestBuilder.build())
+            if (response.code == 401 && !token.isNullOrBlank()) {
+                val path = original.url.encodedPath
+                if (!path.endsWith("auth/login") && !path.endsWith("auth/register")) {
+                    Log.w(TAG, "Authenticated request returned 401 Unauthorized ($path). Invalidating session.")
+                    sessionManager.clearSession()
+                }
+            }
+            response
         }
 
         val okHttpClient = OkHttpClient.Builder()

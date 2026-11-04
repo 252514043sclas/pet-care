@@ -188,6 +188,13 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun validateSession(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val valid = repository.validateSession()
+            onResult(valid)
+        }
+    }
+
     // ----------------------------------------------------
     // Dashboard & Data Synchronization
     // ----------------------------------------------------

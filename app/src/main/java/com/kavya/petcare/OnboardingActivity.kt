@@ -20,16 +20,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.data.session.SessionManager
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class OnboardingActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (SessionManager.getInstance(this).isLoggedIn()) {
+            val intent = Intent(this, HomeDashboardActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+            finish()
+            return
+        }
         setContent {
             PetCareTheme {
                 OnboardingScreen(
                     onContinue = {
-                        startActivity(Intent(this@OnboardingActivity, LoginActivity::class.java))
+                        SessionManager.getInstance(this@OnboardingActivity).setOnboardingCompleted(true)
+                        startActivity(Intent(this@OnboardingActivity, LoginActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        })
                         finish()
                     }
                 )

@@ -15,6 +15,7 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_USER_EMAIL = "key_user_email"
         private const val KEY_ACTIVE_PET_ID = "key_active_pet_id"
         private const val KEY_BASE_URL = "key_base_url"
+        private const val KEY_ONBOARDING_COMPLETED = "key_onboarding_completed"
 
         @Volatile
         private var INSTANCE: SessionManager? = null
@@ -35,6 +36,16 @@ class SessionManager private constructor(context: Context) {
             if (activePetId != null) {
                 putInt(KEY_ACTIVE_PET_ID, activePetId)
             }
+            putBoolean(KEY_ONBOARDING_COMPLETED, true)
+            apply()
+        }
+    }
+
+    fun updateUserInfo(userId: Int? = null, userName: String? = null, email: String? = null) {
+        prefs.edit().apply {
+            if (userId != null && userId > 0) putInt(KEY_USER_ID, userId)
+            if (!userName.isNullOrBlank()) putString(KEY_USER_NAME, userName)
+            if (!email.isNullOrBlank()) putString(KEY_USER_EMAIL, email)
             apply()
         }
     }
@@ -60,6 +71,12 @@ class SessionManager private constructor(context: Context) {
     }
 
     fun getBaseUrl(): String? = prefs.getString(KEY_BASE_URL, null)
+
+    fun isOnboardingCompleted(): Boolean = prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
+    }
 
     fun clearSession() {
         prefs.edit().apply {

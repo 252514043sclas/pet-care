@@ -96,15 +96,49 @@ class PetCareRepository(private val context: Context) {
         }
     }
 
+    suspend fun validateSession(): Boolean = withContext(Dispatchers.IO) {
+        val token = session.getToken()
+        if (token.isNullOrBlank()) {
+            return@withContext false
+        }
+
+        try {
+            val response = api.getCurrentUser()
+            if (response.isSuccessful && response.body()?.success == true) {
+                val data = response.body()?.data
+                val userMap = data?.get("user") as? Map<*, *>
+                if (userMap != null) {
+                    val name = userMap["name"] as? String
+                    val email = userMap["email"] as? String
+                    val id = (userMap["id"] as? Number)?.toInt()
+                    session.updateUserInfo(
+                        userId = id,
+                        userName = name,
+                        email = email
+                    )
+                }
+                true
+            } else if (response.code() == 401) {
+                session.clearSession()
+                false
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("PetCareRepository", "validateSession network error: ${e.message}, retaining existing session")
+            true
+        }
+    }
+
     suspend fun logout(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             api.logout()
+        } catch (_: Exception) {
+            // Network/server errors during logout are non-blocking
+        } finally {
             session.clearSession()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            session.clearSession()
-            Result.success(Unit)
         }
+        Result.success(Unit)
     }
 
     // ----------------------------------------------------
