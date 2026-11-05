@@ -7,11 +7,11 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,28 +23,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kavya.petcare.ui.EmeraldDark
-import com.kavya.petcare.ui.MintSage
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.components.PetAvatar
 import com.kavya.petcare.ui.components.UserAvatar
 import com.kavya.petcare.ui.theme.PetCareTheme
@@ -95,7 +89,6 @@ class HomeDashboardActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainSlidingDashboardScreen(
     viewModel: PetViewModel,
@@ -131,15 +124,15 @@ fun MainSlidingDashboardScreen(
         AlertDialog(
             onDismissRequest = { showExitDialog = false },
             title = { Text("Exit Pet Care?", fontWeight = FontWeight.Bold, color = EmeraldDark) },
-            text = { Text("Do you want to exit Pet Care?", fontSize = 15.sp, color = Color(0xFF4A5568)) },
+            text = { Text("Are you sure you want to close Pet Care?", fontSize = 15.sp, color = TextSecondary) },
             confirmButton = {
                 Button(
                     onClick = {
                         showExitDialog = false
                         onExitApp()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE63946)),
-                    shape = RoundedCornerShape(20.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = AlertRose),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Text("Exit", color = Color.White, fontWeight = FontWeight.Bold)
                 }
@@ -147,35 +140,43 @@ fun MainSlidingDashboardScreen(
             dismissButton = {
                 OutlinedButton(
                     onClick = { showExitDialog = false },
-                    shape = RoundedCornerShape(20.dp)
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     Text("Stay", color = EmeraldDark, fontWeight = FontWeight.SemiBold)
                 }
             },
             containerColor = Color.White,
-            shape = RoundedCornerShape(24.dp)
+            shape = RoundedCornerShape(22.dp)
         )
     }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFF6F8F3)
+        color = SoftBackground
     ) {
         Scaffold(
-            containerColor = Color(0xFFF6F8F3),
+            containerColor = SoftBackground,
             bottomBar = {
+                // Floating Island Modern Bottom Navigation Bar
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    shape = RoundedCornerShape(28.dp),
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .shadow(
+                            elevation = 16.dp,
+                            shape = RoundedCornerShape(32.dp),
+                            ambientColor = Color(0x1A0D3B2E),
+                            spotColor = Color(0x2E0D3B2E)
+                        ),
+                    shape = RoundedCornerShape(32.dp),
                     color = Color.White,
-                    shadowElevation = 12.dp
+                    border = BorderStroke(1.dp, BorderSubtle)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(8.dp),
+                            .padding(horizontal = 6.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -183,8 +184,8 @@ fun MainSlidingDashboardScreen(
                         val tabIcons = listOf(
                             Icons.Default.Home,
                             Icons.Default.Favorite,
-                            Icons.Default.DateRange,
-                            Icons.Default.Notifications,
+                            Icons.Default.Restaurant,
+                            Icons.Default.CalendarToday,
                             Icons.Default.Person
                         )
 
@@ -195,24 +196,24 @@ fun MainSlidingDashboardScreen(
 
                             Surface(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(20.dp))
+                                    .clip(RoundedCornerShape(24.dp))
                                     .clickable {
                                         coroutineScope.launch {
                                             pagerState.animateScrollToPage(index)
                                         }
                                     },
-                                color = if (isSelected) MintSage.copy(alpha = 0.2f) else Color.Transparent,
-                                shape = RoundedCornerShape(20.dp)
+                                color = if (isSelected) MintSoft else Color.Transparent,
+                                shape = RoundedCornerShape(24.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
                                         imageVector = icon,
                                         contentDescription = label,
-                                        tint = if (isSelected) EmeraldDark else Color.Gray,
+                                        tint = if (isSelected) MintSage else TextMuted,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     AnimatedVisibility(
@@ -277,6 +278,9 @@ fun MainSlidingDashboardScreen(
     }
 }
 
+// ============================================================================
+// Tab 0: Home Dashboard
+// ============================================================================
 @Composable
 fun HomeTabScreen(
     viewModel: PetViewModel,
@@ -289,23 +293,123 @@ fun HomeTabScreen(
 ) {
     val activePet by viewModel.activePet.collectAsState()
     val reminders by viewModel.reminders.collectAsState()
+    val allPets by viewModel.allPets.collectAsState()
+    var showSwitchPetDialog by remember { mutableStateOf(false) }
+
+    if (showSwitchPetDialog) {
+        AlertDialog(
+            onDismissRequest = { showSwitchPetDialog = false },
+            title = {
+                Text("Select Active Pet", fontWeight = FontWeight.Bold, color = EmeraldDark)
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    allPets.forEach { pet ->
+                        val isActive = pet.id.toString() == activePet.id
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    viewModel.selectActivePet(pet)
+                                    showSwitchPetDialog = false
+                                },
+                            color = if (isActive) Color(0xFFF0FAF7) else Color.White,
+                            border = BorderStroke(if (isActive) 1.5.dp else 1.dp, if (isActive) MintSage else BorderSubtle),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    PetAvatar(
+                                        imageUrl = pet.imageUrl,
+                                        species = pet.species,
+                                        petName = pet.name,
+                                        modifier = Modifier.size(42.dp)
+                                    )
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(pet.name, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
+                                        Text("${pet.species} • ${pet.breed}", fontSize = 12.sp, color = TextSecondary)
+                                    }
+                                }
+                                if (isActive) {
+                                    PetBadge(text = "ACTIVE", color = MintSage, textColor = EmeraldDark)
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showSwitchPetDialog = false
+                        onAddPet()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MintSage),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Add Pet", fontSize = 13.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSwitchPetDialog = false }) {
+                    Text("Close", color = TextSecondary)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(22.dp)
+        )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Spacer(Modifier.height(8.dp))
-
+        // Modern Top Bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("WELCOME BACK", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MintSage, letterSpacing = 1.5.sp)
-                Text("Pet Dashboard", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold, color = EmeraldDark)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(MintSage)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "WELCOME BACK",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MintSage,
+                        letterSpacing = 1.2.sp
+                    )
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "Pet Dashboard",
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = EmeraldDark
+                )
             }
 
             Row(
@@ -314,14 +418,21 @@ fun HomeTabScreen(
             ) {
                 Surface(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
+                        .clip(CircleShape)
                         .clickable { onNavigateSettings() },
                     shape = CircleShape,
                     color = Color.White,
-                    shadowElevation = 4.dp
+                    shadowElevation = 3.dp,
+                    border = BorderStroke(1.dp, BorderSubtle)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = EmeraldDark, modifier = Modifier.size(24.dp))
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = EmeraldDark,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
 
@@ -331,107 +442,160 @@ fun HomeTabScreen(
                     userName = "User",
                     shadowElevation = 4.dp,
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
                         .clickable { onNavigateSettings() }
                 )
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
-        Card(
+        // Hero Active Pet Gradient Card
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .shadow(
+                    elevation = 8.dp,
+                    shape = RoundedCornerShape(26.dp),
+                    ambientColor = MintSage.copy(alpha = 0.3f),
+                    spotColor = EmeraldDark.copy(alpha = 0.45f)
+                )
+                .clip(RoundedCornerShape(26.dp))
                 .clickable { onNavigateProfile() },
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            shape = RoundedCornerShape(26.dp),
+            color = Color.Transparent
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(MintSage, EmeraldDark)
-                        ),
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    .padding(24.dp)
+                    .background(HeroCardGradient)
+                    .padding(22.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    PetAvatar(
-                        imageUrl = activePet.imageUrl,
-                        species = activePet.type,
-                        petName = activePet.name,
-                        shadowElevation = 4.dp,
-                        modifier = Modifier.size(64.dp)
-                    )
+                    // Pet Avatar with double glow ring
+                    Surface(
+                        modifier = Modifier.size(70.dp),
+                        shape = CircleShape,
+                        color = Color.White.copy(alpha = 0.25f),
+                        border = BorderStroke(2.5.dp, Color.White.copy(alpha = 0.8f))
+                    ) {
+                        PetAvatar(
+                            imageUrl = activePet.imageUrl,
+                            species = activePet.type,
+                            petName = activePet.name,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-                    Spacer(Modifier.width(18.dp))
+                    Spacer(Modifier.width(16.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Surface(
-                            color = Color(0xFFF3EAC2),
-                            shape = RoundedCornerShape(10.dp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                text = "ACTIVE PET",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF6B5B16),
-                                fontWeight = FontWeight.Bold
-                            )
+                            Surface(
+                                color = Color(0xFFFEF3C7),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text(
+                                    text = "ACTIVE PET",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF92400E),
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                            if (allPets.size > 1) {
+                                Surface(
+                                    color = Color.White.copy(alpha = 0.25f),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.clickable { showSwitchPetDialog = true }
+                                ) {
+                                    Text(
+                                        text = "Switch ▾",
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        fontSize = 10.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
-                        Spacer(Modifier.height(6.dp))
-                        Text(activePet.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("${activePet.breed} ${activePet.type} · ${activePet.age}", fontSize = 14.sp, color = Color.White.copy(alpha = 0.85f))
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = activePet.name,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "${activePet.breed} ${activePet.type} • ${activePet.age}",
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontWeight = FontWeight.Medium
+                        )
                     }
 
                     Surface(
                         shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier.size(40.dp)
+                        color = Color.White.copy(alpha = 0.22f),
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Details", tint = Color.White, modifier = Modifier.size(20.dp))
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "View Profile",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(28.dp))
 
-        Text("Quick Care Actions", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
-        Spacer(Modifier.height(16.dp))
+        // Quick Care Actions Header
+        PetSectionHeader(
+            title = "Quick Care Actions",
+            subtitle = "Daily essentials & diagnostics"
+        )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Spacer(Modifier.height(14.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DashboardActionCard(
                 title = "AI Health Scan",
                 subtitle = "Check symptoms",
                 icon = Icons.Default.Favorite,
+                accentColor = AlertRose,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateHealth
             )
             DashboardActionCard(
                 title = "Diet & Meals",
                 subtitle = "Calorie tracker",
-                icon = Icons.Default.DateRange,
+                icon = Icons.Default.Restaurant,
+                accentColor = AmberAccent,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateDiet
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DashboardActionCard(
                 title = "Grooming & Care",
                 subtitle = "Reminders & guides",
-                icon = Icons.Default.Notifications,
+                icon = Icons.Default.CalendarToday,
+                accentColor = SkyBlue,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateGrooming
             )
@@ -439,108 +603,298 @@ fun HomeTabScreen(
                 title = "Add New Pet",
                 subtitle = "Create profile",
                 icon = Icons.Default.Add,
+                accentColor = MintSage,
                 modifier = Modifier.weight(1f),
                 onClick = onAddPet
             )
         }
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(28.dp))
 
-        Text("Today's Schedule", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+        // Today's Schedule Header
+        PetSectionHeader(
+            title = "Today's Schedule",
+            subtitle = "Active care routine",
+            actionText = "Add Task",
+            onAction = onNavigateGrooming
+        )
+
         Spacer(Modifier.height(12.dp))
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
+        PetModernCard(modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier.padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 if (reminders.isEmpty()) {
-                    Text("No scheduled care activities for today.", color = Color.Gray, fontSize = 14.sp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MintSoft),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Pets, contentDescription = null, tint = MintSage, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text("All caught up!", fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
+                            Text("No pending reminders for today", fontSize = 12.sp, color = TextSecondary)
+                        }
+                    }
                 } else {
                     reminders.take(3).forEachIndexed { index, reminder ->
                         if (index > 0) {
-                            HorizontalDivider(color = Color(0xFFF0F4F1))
+                            HorizontalDivider(color = BorderSubtle)
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(38.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFFE8F5F2)),
+                                    .background(if (index % 2 == 0) MintSoft else AmberSoft),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = if (index % 2 == 0) Icons.Default.DateRange else Icons.Default.Notifications,
+                                    imageVector = if (index % 2 == 0) Icons.Default.Restaurant else Icons.Default.Notifications,
                                     contentDescription = null,
-                                    tint = MintSage,
+                                    tint = if (index % 2 == 0) MintSage else AmberAccent,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             Spacer(Modifier.width(14.dp))
-                            Text(reminder.title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), color = EmeraldDark)
-                            Text(reminder.time, fontSize = 13.sp, color = Color.Gray, fontWeight = FontWeight.SemiBold)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = reminder.title,
+                                    fontWeight = FontWeight.Bold,
+                                    color = EmeraldDark,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = SoftBackground,
+                                border = BorderStroke(1.dp, BorderSubtle)
+                            ) {
+                                Text(
+                                    text = reminder.time,
+                                    fontSize = 12.sp,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.SemiBold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+
+        Spacer(Modifier.height(16.dp))
     }
 }
 
+// ============================================================================
+// Modern Quick Action Card with Accent Tint
+// ============================================================================
 @Composable
-fun HealthTabScreen(onNavigatePhotoScan: () -> Unit, onNavigateSymptomSelection: () -> Unit) {
+fun DashboardActionCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    PetModernCard(
+        modifier = modifier.height(138.dp),
+        onClick = onClick,
+        elevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = accentColor,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Column {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    color = EmeraldDark,
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+// ============================================================================
+// Tab 1: Health & Diagnostics
+// ============================================================================
+@Composable
+fun HealthTabScreen(
+    onNavigatePhotoScan: () -> Unit,
+    onNavigateSymptomSelection: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Text("Health & Diagnostics", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
-        Spacer(Modifier.height(8.dp))
-        Text("AI Symptom Checker & Medical Scan", color = Color.Gray)
+        Text(
+            text = "Health & Diagnostics",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = EmeraldDark
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "AI-powered symptom checker & medical scans",
+            color = TextSecondary,
+            fontSize = 14.sp
+        )
+
         Spacer(Modifier.height(24.dp))
 
-        Card(
+        // AI Camera Scan Hero Card
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(24.dp), ambientColor = MintSage.copy(alpha = 0.3f))
+                .clip(RoundedCornerShape(24.dp))
                 .clickable { onNavigatePhotoScan() },
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MintSage),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            color = Color.Transparent
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Icon(Icons.Default.Favorite, contentDescription = "Scan", tint = Color.White, modifier = Modifier.size(44.dp))
-                Spacer(Modifier.height(16.dp))
-                Text("AI Camera Scan", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("Take a photo of your pet's skin or eyes for instant analysis", color = Color.White.copy(alpha = 0.9f), fontSize = 15.sp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(PrimaryGradient)
+                    .padding(24.dp)
+            ) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.22f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.CameraAlt,
+                            contentDescription = "Scan",
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    Text(
+                        text = "AI Camera Health Scan",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Capture skin, coat, or eye conditions for instant preliminary analysis",
+                        color = Color.White.copy(alpha = 0.88f),
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(18.dp))
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onNavigateSymptomSelection() },
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        // Symptom Selection Card
+        PetModernCard(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onNavigateSymptomSelection
         ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Icon(Icons.Default.Notifications, contentDescription = "Symptoms", tint = MintSage, modifier = Modifier.size(44.dp))
-                Spacer(Modifier.height(16.dp))
-                Text("Select Symptoms", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
-                Text("Choose observed symptoms to get preliminary guidance", color = Color.Gray, fontSize = 15.sp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(AlertRose.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.HealthAndSafety,
+                        contentDescription = "Symptoms",
+                        tint = AlertRose,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Symptom Checklist",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = EmeraldDark
+                    )
+                    Text(
+                        text = "Select observed behavioral or physical signs",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
 }
 
+// ============================================================================
+// Tab 2: Diet & Nutrition
+// ============================================================================
 @Composable
 fun DietTabScreen(
     onNavigateDietPlan: () -> Unit,
@@ -552,18 +906,80 @@ fun DietTabScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Text("Diet & Nutrition", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
-        Spacer(Modifier.height(8.dp))
-        Text("Calorie Tracker & Food Safety", color = Color.Gray)
-        Spacer(Modifier.height(24.dp))
+        Text(
+            text = "Diet & Nutrition",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = EmeraldDark
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Calorie tracking & food safety guide",
+            color = TextSecondary,
+            fontSize = 14.sp
+        )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Spacer(Modifier.height(20.dp))
+
+        // Daily Calorie Summary Card
+        PetModernCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(AmberSoft),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Restaurant, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = "Daily Calorie Target",
+                            fontWeight = FontWeight.Bold,
+                            color = EmeraldDark,
+                            fontSize = 16.sp
+                        )
+                    }
+                    PetBadge(text = "81%", color = AmberAccent, textColor = Color(0xFF92400E))
+                }
+                Spacer(Modifier.height(16.dp))
+                LinearProgressIndicator(
+                    progress = { 0.81f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = AmberAccent,
+                    trackColor = AmberSoft
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Consumed: 650 kcal", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
+                    Text("Target: 800 kcal", fontSize = 13.sp, color = TextMuted)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DashboardActionCard(
                 title = "Meal Schedule",
-                subtitle = "View daily plan",
-                icon = Icons.Default.DateRange,
+                subtitle = "Daily meal plan",
+                icon = Icons.Default.AccessTime,
+                accentColor = MintSage,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateDietPlan
             )
@@ -571,25 +987,28 @@ fun DietTabScreen(
                 title = "Log Meal",
                 subtitle = "Add food intake",
                 icon = Icons.Default.Add,
+                accentColor = EmeraldPrimary,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateMealLog
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DashboardActionCard(
                 title = "Safe vs Toxic",
                 subtitle = "Food reference",
-                icon = Icons.Default.Star,
+                icon = Icons.Default.Shield,
+                accentColor = AlertRose,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateSafeFoods
             )
             DashboardActionCard(
                 title = "Weight Tracker",
-                subtitle = "Monitor growth",
-                icon = Icons.Default.Person,
+                subtitle = "Growth history",
+                icon = Icons.Default.MonitorWeight,
+                accentColor = SkyBlue,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateWeightTracker
             )
@@ -597,6 +1016,9 @@ fun DietTabScreen(
     }
 }
 
+// ============================================================================
+// Tab 3: Care & Grooming
+// ============================================================================
 @Composable
 fun CareTabScreen(
     onNavigateAddReminder: () -> Unit,
@@ -607,43 +1029,93 @@ fun CareTabScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
-        Text("Grooming & Care", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
-        Spacer(Modifier.height(8.dp))
-        Text("Schedules, Reminders & Guides", color = Color.Gray)
+        Text(
+            text = "Grooming & Routine",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = EmeraldDark
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "Schedules, alerts & step-by-step tutorials",
+            color = TextSecondary,
+            fontSize = 14.sp
+        )
+
         Spacer(Modifier.height(24.dp))
 
-        DashboardActionCard(
-            title = "Add Reminder",
-            subtitle = "Schedule grooming, baths & checkups",
-            icon = Icons.Default.Add,
-            modifier = Modifier.fillMaxWidth(),
+        CareActionRow(
+            title = "Add Care Reminder",
+            subtitle = "Schedule baths, brushings, nail trims & vet visits",
+            icon = Icons.Default.AddAlarm,
+            accentColor = MintSage,
             onClick = onNavigateAddReminder
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
 
-        DashboardActionCard(
+        CareActionRow(
             title = "Care Calendar",
-            subtitle = "View monthly reminders",
-            icon = Icons.Default.DateRange,
-            modifier = Modifier.fillMaxWidth(),
+            subtitle = "View monthly reminders and completed tasks",
+            icon = Icons.Default.CalendarToday,
+            accentColor = SkyBlue,
             onClick = onNavigateCalendar
         )
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(14.dp))
 
-        DashboardActionCard(
+        CareActionRow(
             title = "Grooming Guides",
-            subtitle = "Tutorials and step-by-step care tips",
-            icon = Icons.Default.Notifications,
-            modifier = Modifier.fillMaxWidth(),
+            subtitle = "Step-by-step coat care and hygiene tutorials",
+            icon = Icons.AutoMirrored.Filled.MenuBook,
+            accentColor = LavenderAccent,
             onClick = onNavigateGuides
         )
     }
 }
 
+@Composable
+fun CareActionRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    accentColor: Color,
+    onClick: () -> Unit
+) {
+    PetModernCard(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(accentColor.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = icon, contentDescription = title, tint = accentColor, modifier = Modifier.size(24.dp))
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 16.sp)
+                Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+            }
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+// ============================================================================
+// Tab 4: Profile Tab
+// ============================================================================
 @Composable
 fun ProfileTabScreen(
     viewModel: PetViewModel,
@@ -657,110 +1129,88 @@ fun ProfileTabScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 20.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(16.dp))
-        PetAvatar(
-            imageUrl = activePet.imageUrl,
-            species = activePet.type,
-            petName = activePet.name,
-            shadowElevation = 6.dp,
+        Surface(
             modifier = Modifier
-                .size(100.dp)
-                .clickable { onNavigateProfile() }
+                .size(106.dp)
+                .shadow(10.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.3f))
+                .clip(CircleShape)
+                .clickable { onNavigateProfile() },
+            shape = CircleShape,
+            color = Color.White,
+            border = BorderStroke(3.dp, MintSage.copy(alpha = 0.3f))
+        ) {
+            PetAvatar(
+                imageUrl = activePet.imageUrl,
+                species = activePet.type,
+                petName = activePet.name,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Spacer(Modifier.height(14.dp))
+
+        Text(
+            text = activePet.name,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = EmeraldDark
         )
-        Spacer(Modifier.height(16.dp))
-        Text(activePet.name, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
-        Text("${activePet.breed} ${activePet.type} · ${activePet.age}", fontSize = 15.sp, color = Color.Gray)
 
-        Spacer(Modifier.height(32.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(top = 4.dp)
+        ) {
+            PetBadge(text = activePet.type.uppercase(), color = MintSage)
+            Text("•", color = TextMuted)
+            Text(activePet.breed, fontSize = 14.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+        }
 
-        Card(
+        Spacer(Modifier.height(24.dp))
+
+        // 3-Stat Pill Card
+        PetModernCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onNavigateProfile() },
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+                .clickable { onNavigateProfile() }
         ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Weight", color = Color(0xFF2C3E37), fontWeight = FontWeight.SemiBold)
-                    Text(activePet.weight, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                    Text("Weight", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(activePet.weight, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
                 }
-                HorizontalDivider(color = Color(0xFFF0F4F1))
+                HorizontalDivider(color = BorderSubtle)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Health Score", color = Color(0xFF2C3E37), fontWeight = FontWeight.SemiBold)
-                    Text("${activePet.healthScore} / 100", fontWeight = FontWeight.Bold, color = MintSage)
+                    Text("Health Score", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text("${activePet.healthScore} / 100", fontWeight = FontWeight.Bold, color = MintSage, fontSize = 15.sp)
                 }
-                HorizontalDivider(color = Color(0xFFF0F4F1))
+                HorizontalDivider(color = BorderSubtle)
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Vaccination Status", color = Color(0xFF2C3E37), fontWeight = FontWeight.SemiBold)
-                    Text(activePet.vaccinationStatus, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                    Text("Vaccination Status", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text(activePet.vaccinationStatus, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
                 }
             }
         }
 
         Spacer(Modifier.height(24.dp))
 
-        Button(
-            onClick = onAddPet,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MintSage),
-            shape = RoundedCornerShape(27.dp)
-        ) {
-            Text("Add Another Pet", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
+        PetGradientButton(
+            text = "Add Another Pet",
+            icon = Icons.Default.Add,
+            onClick = onAddPet
+        )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
-        OutlinedButton(
-            onClick = onNavigateSettings,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            shape = RoundedCornerShape(27.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldDark),
-            border = BorderStroke(1.5.dp, MintSage)
-        ) {
-            Icon(Icons.Default.Settings, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("App Settings & Account", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        }
-    }
-}
+        PetOutlinedButton(
+            text = "App Settings & Account",
+            icon = Icons.Default.Settings,
+            onClick = onNavigateSettings
+        )
 
-@Composable
-fun DashboardActionCard(title: String, subtitle: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Card(
-        modifier = modifier
-            .height(130.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE8F5F2)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = title, tint = MintSage, modifier = Modifier.size(24.dp))
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(title, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 16.sp)
-            Text(subtitle, fontSize = 12.sp, color = Color.Gray)
-        }
+        Spacer(Modifier.height(16.dp))
     }
 }

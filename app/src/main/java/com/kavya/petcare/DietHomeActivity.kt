@@ -4,15 +4,30 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.MonitorWeight
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class DietHomeActivity : ComponentActivity() {
@@ -22,141 +37,202 @@ class DietHomeActivity : ComponentActivity() {
             PetCareTheme {
                 Scaffold(
                     topBar = {
-                        TopAppBar(title = { Text("Diet & Nutrition") })
-                    }
+                        PetModernTopBar(
+                            title = "Diet & Nutrition",
+                            subtitle = "Nutrition planning & tracking",
+                            onBack = { finish() }
+                        )
+                    },
+                    containerColor = SoftBackground
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
-                            .padding(24.dp),
+                            .verticalScroll(rememberScrollState())
+                            .padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = "Nutrition Center",
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Card(
+                        // Daily Calorie Summary Card
+                        PetModernCard(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
-                            shape = MaterialTheme.shapes.large
+                            containerColor = WarmPearl
                         ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
-                                Text(
-                                    text = "📊 Daily Calorie Tracker",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = "Consumed: 650 / 800 kcal",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Daily Calorie Target",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = TextPrimary
+                                        )
+                                        Text(
+                                            text = "Balanced diet for active pet",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                    PetBadge(
+                                        text = "81% Met",
+                                        containerColor = MintSoft,
+                                        contentColor = EmeraldPrimary
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    Row(verticalAlignment = Alignment.Bottom) {
+                                        Text(
+                                            text = "650",
+                                            fontSize = 32.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = EmeraldPrimary
+                                        )
+                                        Text(
+                                            text = " / 800 kcal",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextSecondary,
+                                            modifier = Modifier.padding(bottom = 4.dp, start = 4.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = "150 kcal left",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = AmberAccent
+                                    )
+                                }
+
                                 LinearProgressIndicator(
                                     progress = { 650f / 800f },
-                                    modifier = Modifier.fillMaxWidth().height(8.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(10.dp)
+                                        .clip(RoundedCornerShape(5.dp)),
+                                    color = MintSage,
+                                    trackColor = BorderSubtle
                                 )
                             }
                         }
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    startActivity(Intent(this@DietHomeActivity, DietPlanActivity::class.java))
-                                },
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(text = "🥗", fontSize = 28.sp)
-                                Column {
-                                    Text(text = "Today's Meal Plan", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text(text = "View structured breakfast, lunch, and dinner schedule", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
-                            }
-                        }
+                        PetSectionHeader(title = "Diet Tools & Guides")
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    startActivity(Intent(this@DietHomeActivity, MealLogActivity::class.java))
-                                },
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(text = "🍲", fontSize = 28.sp)
-                                Column {
-                                    Text(text = "Meal Log", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text(text = "Log meals and portion sizes", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                        DietNavCard(
+                            title = "Today's Meal Plan",
+                            description = "Structured morning, noon, and evening schedule",
+                            icon = Icons.Default.Restaurant,
+                            accentColor = EmeraldPrimary,
+                            onClick = {
+                                startActivity(Intent(this@DietHomeActivity, DietPlanActivity::class.java))
                             }
-                        }
+                        )
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    startActivity(Intent(this@DietHomeActivity, SafeVsToxicFoodsActivity::class.java))
-                                },
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(text = "⚠️", fontSize = 28.sp)
-                                Column {
-                                    Text(text = "Safe vs Toxic Foods", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text(text = "Check what foods are safe for your pet", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                        DietNavCard(
+                            title = "Meal Log",
+                            description = "Record meals, snacks, and portion sizes",
+                            icon = Icons.Default.Fastfood,
+                            accentColor = AmberAccent,
+                            onClick = {
+                                startActivity(Intent(this@DietHomeActivity, MealLogActivity::class.java))
                             }
-                        }
+                        )
 
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    startActivity(Intent(this@DietHomeActivity, WeightTrackerActivity::class.java))
-                                },
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                Text(text = "⚖️", fontSize = 28.sp)
-                                Column {
-                                    Text(text = "Weight Tracker", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text(text = "Track weight progress and history", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+                        DietNavCard(
+                            title = "Safe vs Toxic Foods",
+                            description = "Check toxic ingredients before feeding your pet",
+                            icon = Icons.Default.WarningAmber,
+                            accentColor = AlertRose,
+                            onClick = {
+                                startActivity(Intent(this@DietHomeActivity, SafeVsToxicFoodsActivity::class.java))
                             }
-                        }
+                        )
+
+                        DietNavCard(
+                            title = "Weight Tracker",
+                            description = "Monitor weight trends, target range & history",
+                            icon = Icons.Default.MonitorWeight,
+                            accentColor = SkyBlue,
+                            onClick = {
+                                startActivity(Intent(this@DietHomeActivity, WeightTrackerActivity::class.java))
+                            }
+                        )
                     }
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun DietNavCard(
+        title: String,
+        description: String,
+        icon: ImageVector,
+        accentColor: Color,
+        onClick: () -> Unit
+    ) {
+        PetModernCard(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(),
+            containerColor = WarmPearl
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(accentColor.copy(alpha = 0.12f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        lineHeight = 18.sp
+                    )
+                }
+
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }

@@ -137,6 +137,42 @@ class PetCareRepository(private val context: Context) {
                         avatarUrl = avatarUrl
                     )
                 }
+
+                val petsList = data?.get("pets") as? List<Map<String, Any?>>
+                if (!petsList.isNullOrEmpty()) {
+                    val activePetMap = petsList.find { (it["is_active"] as? Number)?.toInt() == 1 }
+                        ?: petsList.find { (it["id"] as? Number)?.toInt() == session.getActivePetId() }
+                        ?: petsList.firstOrNull()
+
+                    if (activePetMap != null) {
+                        val petId = (activePetMap["id"] as? Number)?.toInt() ?: session.getActivePetId()
+                        val petName = activePetMap["name"] as? String ?: "Pet"
+                        val species = activePetMap["species"] as? String ?: "Dog"
+                        val breed = activePetMap["breed"] as? String ?: "Companion"
+                        val age = activePetMap["age_years"] as? String ?: "1.0 yr"
+                        val weightKg = activePetMap["weight_kg"]?.toString() ?: "2.0"
+                        val weight = if (weightKg.endsWith("kg")) weightKg else "$weightKg kg"
+                        val imageUrl = activePetMap["image_url"] as? String
+                        val gender = activePetMap["gender"] as? String ?: "Female"
+                        val microchip = activePetMap["microchip_id"] as? String
+                        val healthScore = (activePetMap["health_score"] as? Number)?.toInt() ?: 95
+                        val vaccination = activePetMap["vaccination_status"] as? String ?: "Up to Date"
+
+                        session.saveActivePetDetails(
+                            id = petId,
+                            name = petName,
+                            type = species,
+                            breed = breed,
+                            age = age,
+                            weight = weight,
+                            imageUrl = imageUrl,
+                            gender = gender,
+                            microchipId = microchip,
+                            healthScore = healthScore,
+                            vaccinationStatus = vaccination
+                        )
+                    }
+                }
                 true
             } else if (response.code() == 401) {
                 session.clearSession()
@@ -218,7 +254,9 @@ class PetCareRepository(private val context: Context) {
         breed: String,
         ageYears: String,
         weightKg: Double,
-        gender: String = "Female"
+        gender: String = "Female",
+        imageBase64: String? = null,
+        imageUrl: String? = null
     ): Result<PetDto> = withContext(Dispatchers.IO) {
         try {
             val req = CreatePetRequest(
@@ -227,12 +265,27 @@ class PetCareRepository(private val context: Context) {
                 breed = breed.trim(),
                 ageYears = ageYears.trim(),
                 weightKg = weightKg,
-                gender = gender
+                gender = gender,
+                imageBase64 = imageBase64,
+                imageUrl = imageUrl
             )
             val response = api.createPet(req)
             if (response.isSuccessful && response.body()?.success == true) {
                 val pet = response.body()!!.data!!
                 session.setActivePetId(pet.id)
+                session.saveActivePetDetails(
+                    id = pet.id,
+                    name = pet.name,
+                    type = pet.species,
+                    breed = pet.breed,
+                    age = pet.ageYears,
+                    weight = "${pet.weightKg} kg",
+                    imageUrl = pet.imageUrl,
+                    gender = pet.gender,
+                    microchipId = pet.microchipId,
+                    healthScore = pet.healthScore,
+                    vaccinationStatus = pet.vaccinationStatus
+                )
                 Result.success(pet)
             } else {
                 Result.failure(Exception(response.body()?.message ?: "Failed to create pet"))
@@ -498,7 +551,11 @@ class PetCareRepository(private val context: Context) {
         try {
             val response = api.uploadPetPhoto(id, UploadPhotoRequest(imageBase64 = base64Image))
             if (response.isSuccessful && response.body()?.success == true) {
-                Result.success(response.body()!!.data!!)
+                val data = response.body()!!.data!!
+                if (id == session.getActivePetId()) {
+                    session.setActivePetImageUrl(data.imageUrl)
+                }
+                Result.success(data)
             } else {
                 val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to upload photo")
                 Result.failure(Exception(errorMsg))

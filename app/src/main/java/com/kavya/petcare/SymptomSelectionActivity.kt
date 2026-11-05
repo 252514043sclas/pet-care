@@ -4,18 +4,28 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class SymptomSelectionActivity : ComponentActivity() {
@@ -29,7 +39,8 @@ class SymptomSelectionActivity : ComponentActivity() {
                     onAnalyze = {
                         startActivity(Intent(this@SymptomSelectionActivity, AnalyzingActivity::class.java))
                         finish()
-                    }
+                    },
+                    onBack = { finish() }
                 )
             }
         }
@@ -39,7 +50,8 @@ class SymptomSelectionActivity : ComponentActivity() {
 @Composable
 fun SymptomSelectionScreen(
     viewModel: PetViewModel = PetViewModel.getShared(LocalContext.current),
-    onAnalyze: () -> Unit
+    onAnalyze: () -> Unit,
+    onBack: () -> Unit = {}
 ) {
     val symptomsFromApi by viewModel.symptomsList.collectAsState()
     val fallbackSymptoms = listOf(
@@ -56,74 +68,118 @@ fun SymptomSelectionScreen(
     val selectedSymptoms = remember { mutableStateMapOf<String, Boolean>() }
     var isSubmitting by remember { mutableStateOf(false) }
 
+    val selectedCount = selectedSymptoms.values.count { it }
+
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Select Symptoms") })
-        }
+            PetModernTopBar(
+                title = "Symptom Checker",
+                subtitle = "Select observable signs",
+                onBack = onBack
+            )
+        },
+        containerColor = SoftBackground
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = "What symptoms is your pet showing?",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Select all applicable signs for accurate AI diagnosis",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Observable Symptoms",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Select all signs your pet is showing",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                }
+                PetBadge(
+                    text = "$selectedCount selected",
+                    containerColor = if (selectedCount > 0) MintSoft else SoftBackground,
+                    contentColor = if (selectedCount > 0) EmeraldPrimary else TextSecondary
+                )
+            }
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(symptoms) { symptom ->
                     val isChecked = selectedSymptoms[symptom] ?: false
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                selectedSymptoms[symptom] = !isChecked
-                            },
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            else MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        shape = MaterialTheme.shapes.medium
+
+                    PetModernCard(
+                        onClick = {
+                            selectedSymptoms[symptom] = !isChecked
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = if (isChecked) MintSoft.copy(alpha = 0.6f) else WarmPearl,
+                        borderColor = if (isChecked) MintSage else BorderSubtle
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp),
+                                .padding(horizontal = 18.dp, vertical = 16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
                                 text = symptom,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isChecked) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isChecked) EmeraldDark else TextPrimary,
+                                modifier = Modifier.weight(1f)
                             )
-                            Checkbox(
-                                checked = isChecked,
-                                onCheckedChange = { checked ->
-                                    selectedSymptoms[symptom] = checked
+
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isChecked) EmeraldPrimary else SoftBackground)
+                                    .then(
+                                        if (!isChecked) Modifier.background(Color.Transparent)
+                                        else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isChecked) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Transparent)
+                                            .padding(2.dp)
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
+            PetGradientButton(
+                text = "Analyze Symptoms",
+                icon = Icons.Default.Search,
+                enabled = !isSubmitting,
+                isLoading = isSubmitting,
                 onClick = {
                     val chosen = selectedSymptoms.filter { it.value }.keys.toList()
                     isSubmitting = true
@@ -131,23 +187,8 @@ fun SymptomSelectionScreen(
                         isSubmitting = false
                         onAnalyze()
                     }
-                },
-                enabled = !isSubmitting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(
-                        text = "Analyze Symptoms",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
-            }
+            )
         }
     }
 }

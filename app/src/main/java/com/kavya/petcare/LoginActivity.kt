@@ -4,29 +4,32 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kavya.petcare.data.network.NetworkConfig
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class LoginActivity : ComponentActivity() {
@@ -69,7 +72,6 @@ fun LoginScreen(
 ) {
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
     var showForgotPasswordDialog by remember { mutableStateOf(false) }
     var showServerConfigDialog by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -80,6 +82,9 @@ fun LoginScreen(
     var loginErrorMessage by remember { mutableStateOf<String?>(null) }
     val isLoading by viewModel.isLoading.collectAsState()
 
+    // ------------------------------------------------------------------------
+    // Server Configuration Dialog
+    // ------------------------------------------------------------------------
     if (showServerConfigDialog) {
         AlertDialog(
             onDismissRequest = { showServerConfigDialog = false },
@@ -87,15 +92,15 @@ fun LoginScreen(
                 Text(
                     text = "Server Configuration",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF184D43)
+                    color = EmeraldDark
                 )
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = if (NetworkConfig.isEmulator()) "Device: Android Emulator" else "Device: Physical Phone",
+                        text = if (NetworkConfig.isEmulator()) "Environment: Android Emulator" else "Environment: Physical Device",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = TextSecondary
                     )
                     OutlinedTextField(
                         value = serverUrlInput,
@@ -103,7 +108,7 @@ fun LoginScreen(
                         label = { Text("API Base URL") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp)
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -111,15 +116,17 @@ fun LoginScreen(
                     ) {
                         OutlinedButton(
                             onClick = { serverUrlInput = NetworkConfig.EMULATOR_BASE_URL },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("10.0.2.2", fontSize = 11.sp)
+                            Text("10.0.2.2", fontSize = 11.sp, color = EmeraldDark)
                         }
                         OutlinedButton(
                             onClick = { serverUrlInput = NetworkConfig.LAN_BASE_URL },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("LAN Host", fontSize = 11.sp)
+                            Text("LAN Host", fontSize = 11.sp, color = EmeraldDark)
                         }
                     }
                 }
@@ -130,35 +137,39 @@ fun LoginScreen(
                         NetworkConfig.setCustomBaseUrl(context, serverUrlInput)
                         showServerConfigDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D))
+                    colors = ButtonDefaults.buttonColors(containerColor = MintSage),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Save")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showServerConfigDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text("Cancel", color = TextSecondary)
                 }
             },
             containerColor = Color.White,
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(22.dp)
         )
     }
 
+    // ------------------------------------------------------------------------
+    // Forgot Password Dialog
+    // ------------------------------------------------------------------------
     if (showForgotPasswordDialog) {
         AlertDialog(
             onDismissRequest = {
                 showForgotPasswordDialog = false
                 resetErrorMessage = null
             },
-            title = { Text("Reset Password", fontWeight = FontWeight.Bold, color = Color(0xFF184D43)) },
+            title = { Text("Reset Password", fontWeight = FontWeight.Bold, color = EmeraldDark) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Enter your email address to receive a password reset link.", color = Color(0xFF2D3748))
+                    Text("Enter your email address to receive a secure password reset link.", color = TextSecondary, fontSize = 14.sp)
                     if (resetErrorMessage != null) {
                         Text(
                             text = resetErrorMessage ?: "",
-                            color = Color(0xFFC62828),
+                            color = AlertRose,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -169,19 +180,10 @@ fun LoginScreen(
                             resetEmail = it
                             resetErrorMessage = null
                         },
-                        label = { Text("Email address") },
+                        label = { Text("Registered Email") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color(0xFF111816),
-                            unfocusedTextColor = Color(0xFF111816),
-                            focusedBorderColor = Color(0xFF267D6D),
-                            unfocusedBorderColor = Color(0xFFB5C4BE),
-                            focusedLabelColor = Color(0xFF184D43),
-                            unfocusedLabelColor = Color(0xFF556B64)
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(14.dp)
                     )
                 }
             },
@@ -204,7 +206,8 @@ fun LoginScreen(
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D))
+                    colors = ButtonDefaults.buttonColors(containerColor = MintSage),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Send Reset Link")
                 }
@@ -214,87 +217,133 @@ fun LoginScreen(
                     showForgotPasswordDialog = false
                     resetErrorMessage = null
                 }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text("Cancel", color = TextSecondary)
                 }
             },
             containerColor = Color.White,
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(22.dp)
         )
     }
 
+    // ------------------------------------------------------------------------
+    // Main Login Layout
+    // ------------------------------------------------------------------------
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF6F8F3))
-            .padding(24.dp),
+            .background(SoftBackground)
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(32.dp))
-
-        Surface(
-            modifier = Modifier
-                .size(80.dp)
-                .clickable {
-                    serverUrlInput = NetworkConfig.getCurrentBaseUrl(context)
-                    showServerConfigDialog = true
-                },
-            shape = CircleShape,
-            color = Color(0xFFE8F5F2)
+        // Top row with server settings button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Default.Pets,
-                    contentDescription = "Logo",
-                    tint = Color(0xFF184D43),
-                    modifier = Modifier.size(40.dp)
-                )
+            Surface(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable {
+                        serverUrlInput = NetworkConfig.getCurrentBaseUrl(context)
+                        showServerConfigDialog = true
+                    },
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 2.dp,
+                border = BorderStroke(1.dp, BorderSubtle)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Server Settings",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
+        // Hero Logo with double ring effect
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(108.dp)
+                    .clip(CircleShape)
+                    .background(MintSoft)
+            )
+            Surface(
+                modifier = Modifier
+                    .size(84.dp)
+                    .shadow(elevation = 8.dp, shape = CircleShape, ambientColor = MintSage.copy(alpha = 0.3f)),
+                shape = CircleShape,
+                color = Color.White,
+                border = BorderStroke(2.dp, MintSage.copy(alpha = 0.2f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Pets,
+                        contentDescription = "Logo",
+                        tint = EmeraldDark,
+                        modifier = Modifier.size(42.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
         Text(
-            "Welcome Back!",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF184D43)
+            text = "Welcome Back",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = EmeraldDark
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
 
         Text(
-            "Log in to continue caring for your pet",
-            color = Color.Gray
+            text = "Sign in to continue caring for your pet",
+            fontSize = 14.sp,
+            color = TextSecondary
         )
 
+        // Reset success notification
         if (resetSuccessMessage.isNotEmpty()) {
             Spacer(Modifier.height(16.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFE8F5F2),
-                shape = RoundedCornerShape(12.dp)
+                color = MintSoft,
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, MintSage.copy(alpha = 0.3f))
             ) {
                 Text(
                     text = resetSuccessMessage,
-                    modifier = Modifier.padding(12.dp),
-                    color = Color(0xFF184D43),
+                    modifier = Modifier.padding(14.dp),
+                    color = EmeraldDark,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp
                 )
             }
         }
 
+        // Error message banner
         if (loginErrorMessage != null) {
             Spacer(Modifier.height(16.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFFFEBEE),
-                shape = RoundedCornerShape(12.dp)
+                color = AlertRoseSoft,
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, AlertRose.copy(alpha = 0.3f))
             ) {
                 Text(
                     text = loginErrorMessage ?: "",
-                    modifier = Modifier.padding(12.dp),
-                    color = Color(0xFFC62828),
+                    modifier = Modifier.padding(14.dp),
+                    color = AlertRose,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp
                 )
@@ -303,82 +352,70 @@ fun LoginScreen(
 
         Spacer(Modifier.height(28.dp))
 
-        OutlinedTextField(
-            value = identifier,
-            onValueChange = {
-                identifier = it
-                loginErrorMessage = null
-            },
+        // Input Card
+        PetModernCard(
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email address or User ID") },
-            placeholder = { Text("e.g. user@example.com or User ID", color = Color.Gray) },
-            singleLine = true,
-            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp, fontWeight = FontWeight.Normal),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF111816),
-                unfocusedTextColor = Color(0xFF111816),
-                focusedBorderColor = Color(0xFF267D6D),
-                unfocusedBorderColor = Color(0xFFB5C4BE),
-                focusedLabelColor = Color(0xFF184D43),
-                unfocusedLabelColor = Color(0xFF556B64)
-            ),
-            shape = RoundedCornerShape(14.dp)
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                loginErrorMessage = null
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password") },
-            singleLine = true,
-            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp, fontWeight = FontWeight.Normal),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF111816),
-                unfocusedTextColor = Color(0xFF111816),
-                focusedBorderColor = Color(0xFF267D6D),
-                unfocusedBorderColor = Color(0xFFB5C4BE),
-                focusedLabelColor = Color(0xFF184D43),
-                unfocusedLabelColor = Color(0xFF556B64)
-            ),
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        tint = Color(0xFF267D6D)
-                    )
-                }
-            },
-            shape = RoundedCornerShape(14.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            elevation = 2.dp
         ) {
-            TextButton(onClick = { showForgotPasswordDialog = true }) {
-                Text("Forgot Password?", color = Color(0xFF267D6D), fontWeight = FontWeight.SemiBold)
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                PetTextField(
+                    value = identifier,
+                    onValueChange = {
+                        identifier = it
+                        loginErrorMessage = null
+                    },
+                    label = "Email address or User ID",
+                    placeholder = "e.g. user@example.com or User ID",
+                    leadingIcon = Icons.Default.Email
+                )
+
+                PetTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        loginErrorMessage = null
+                    },
+                    label = "Password",
+                    leadingIcon = Icons.Default.Lock,
+                    isPassword = true
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = { showForgotPasswordDialog = true },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Text(
+                            text = "Forgot Password?",
+                            color = MintSage,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(24.dp))
 
-        Button(
+        PetGradientButton(
+            text = "Log In",
+            isLoading = isLoading,
             onClick = {
                 val trimmedId = identifier.trim()
                 if (trimmedId.isBlank()) {
                     loginErrorMessage = "Please enter your email or user ID."
-                    return@Button
+                    return@PetGradientButton
                 }
                 if (password.isBlank()) {
                     loginErrorMessage = "Please enter your password."
-                    return@Button
+                    return@PetGradientButton
                 }
                 viewModel.login(
                     email = trimmedId,
@@ -391,38 +428,30 @@ fun LoginScreen(
                         loginErrorMessage = err
                     }
                 )
-            },
-            enabled = !isLoading,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF267D6D)
-            )
+            }
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text("Log In")
-            }
+            Text(
+                text = "Don't have an account?",
+                color = TextSecondary,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "Sign Up",
+                color = MintSage,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { onSignUp() }
+            )
         }
 
-        Spacer(Modifier.height(20.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Don't have an account? ")
-
-            TextButton(onClick = onSignUp) {
-                Text(
-                    "Sign Up",
-                    color = Color(0xFF267D6D),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
+        Spacer(Modifier.height(24.dp))
     }
 }

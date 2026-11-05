@@ -15,7 +15,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +32,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -41,9 +45,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kavya.petcare.data.models.PetDto
 import com.kavya.petcare.data.session.SessionManager
-import com.kavya.petcare.ui.EmeraldDark
-import com.kavya.petcare.ui.MintSage
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.components.PetAvatar
+import com.kavya.petcare.ui.components.PetImageLoader
 import com.kavya.petcare.ui.components.UserAvatar
 import com.kavya.petcare.ui.theme.PetCareTheme
 import java.io.ByteArrayOutputStream
@@ -102,10 +106,11 @@ fun SettingsScreen(
 
     fun uploadUserBitmap(bitmap: Bitmap) {
         val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
         val byteArray = stream.toByteArray()
         val base64 = "data:image/jpeg;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
-        viewModel.uploadUserAvatar(base64) { success, msg ->
+        PetImageLoader.cacheBitmap(context, base64, bitmap)
+        viewModel.uploadUserAvatar(base64, bitmap) { success, msg ->
             statusMessage = msg
         }
     }
@@ -575,412 +580,377 @@ fun SettingsScreen(
     // ------------------------------------------------------------------------
     // Main Settings Layout
     // ------------------------------------------------------------------------
-    Surface(modifier = Modifier.fillMaxSize(), color = Color(0xFFF6F8F3)) {
+    Surface(modifier = Modifier.fillMaxSize(), color = SoftBackground) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .padding(bottom = 28.dp)
         ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = EmeraldDark
-                    )
-                }
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = "App Settings",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = EmeraldDark
-                )
-            }
+            // Modern Top Bar
+            PetModernTopBar(
+                title = "App Settings",
+                subtitle = "Manage account, pets, and preferences",
+                onBack = onBack
+            )
 
-            // Status message pill
+            // Status message banner
             if (statusMessage != null) {
-                Spacer(Modifier.height(10.dp))
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFE8F5F2)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 6.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MintSoft,
+                    border = BorderStroke(1.dp, MintSage.copy(alpha = 0.3f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(statusMessage ?: "", color = Color(0xFF184D43), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { statusMessage = null }) { Text("OK", color = Color(0xFF267D6D)) }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // ================================================================
-            // Section A: Account Settings
-            // ================================================================
-            SettingsSectionHeader(title = "Account Settings", icon = Icons.Default.Person)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(contentAlignment = Alignment.BottomEnd) {
-                            UserAvatar(
-                                avatarUrl = userAvatarUrl,
-                                userName = session.getUserName(),
-                                shadowElevation = 2.dp,
-                                modifier = Modifier
-                                    .size(62.dp)
-                                    .clickable { showAvatarChooserDialog = true }
-                            )
-                            Surface(
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .clickable { showAvatarChooserDialog = true },
-                                shape = CircleShape,
-                                color = Color(0xFF267D6D),
-                                shadowElevation = 2.dp
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.CameraAlt,
-                                        contentDescription = "Change Photo",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(Modifier.width(14.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = session.getUserName(), fontWeight = FontWeight.Bold, fontSize = 17.sp, color = Color(0xFF111816))
-                            Text(text = "${session.getUserEmail()}  •  ID #${session.getUserId()}", fontSize = 13.sp, color = Color(0xFF556B64))
-                        }
-                    }
-
-                    HorizontalDivider(color = Color(0xFFF0F4F1))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { showEditProfileDialog = true },
+                        Text(
+                            text = statusMessage ?: "",
+                            color = EmeraldDark,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF267D6D))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Edit Info", fontSize = 12.sp, color = Color(0xFF267D6D))
-                        }
-                        OutlinedButton(
-                            onClick = { showChangePasswordDialog = true },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color(0xFF267D6D))
-                            Spacer(Modifier.width(4.dp))
-                            Text("Password", fontSize = 12.sp, color = Color(0xFF267D6D))
+                        )
+                        TextButton(onClick = { statusMessage = null }) {
+                            Text("OK", color = MintSage, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // ================================================================
-            // Section B: Pet Management
-            // ================================================================
-            SettingsSectionHeader(title = "Pet Management", icon = Icons.Default.Pets)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (allPets.isEmpty()) {
-                        Text("No pets loaded yet.", fontSize = 13.sp, color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
-                    } else {
-                        val activePetId = session.getActivePetId()
-                        allPets.forEachIndexed { index, pet ->
-                            val isActive = pet.id == activePetId
+                // ================================================================
+                // Section A: Account Settings
+                // ================================================================
+                Column {
+                    SettingsSectionHeader(title = "Account Settings", icon = Icons.Default.Person)
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        viewModel.selectActivePet(pet)
-                                        statusMessage = "${pet.name} is now your active pet."
-                                    }
-                                    .padding(vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier.weight(1f),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    PetAvatar(
-                                        imageUrl = pet.imageUrl,
-                                        species = pet.species,
-                                        petName = pet.name,
-                                        modifier = Modifier.size(46.dp)
+                                Box(contentAlignment = Alignment.BottomEnd) {
+                                    UserAvatar(
+                                        avatarUrl = userAvatarUrl,
+                                        userName = session.getUserName(),
+                                        shadowElevation = 3.dp,
+                                        modifier = Modifier
+                                            .size(64.dp)
+                                            .clickable { showAvatarChooserDialog = true }
                                     )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(pet.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF111816))
-                                            if (isActive) {
-                                                Spacer(Modifier.width(6.dp))
-                                                Surface(
-                                                    shape = RoundedCornerShape(6.dp),
-                                                    color = Color(0xFFE8F5F2)
-                                                ) {
-                                                    Text(
-                                                        "ACTIVE",
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFF184D43),
-                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    )
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .shadow(2.dp, CircleShape)
+                                            .clip(CircleShape)
+                                            .clickable { showAvatarChooserDialog = true },
+                                        shape = CircleShape,
+                                        color = MintSage,
+                                        border = BorderStroke(1.5.dp, Color.White)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.CameraAlt,
+                                                contentDescription = "Change Photo",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(13.dp)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(Modifier.width(16.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = session.getUserName(),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = EmeraldDark
+                                    )
+                                    Text(
+                                        text = "${session.getUserEmail()}  •  ID #${session.getUserId()}",
+                                        fontSize = 13.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(color = BorderSubtle)
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { showEditProfileDialog = true },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.2.dp, MintSage)
+                                ) {
+                                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = MintSage)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Edit Info", fontSize = 13.sp, color = EmeraldDark, fontWeight = FontWeight.Bold)
+                                }
+                                OutlinedButton(
+                                    onClick = { showChangePasswordDialog = true },
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(14.dp),
+                                    border = BorderStroke(1.2.dp, MintSage)
+                                ) {
+                                    Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp), tint = MintSage)
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Password", fontSize = 13.sp, color = EmeraldDark, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ================================================================
+                // Section B: Pet Management
+                // ================================================================
+                Column {
+                    SettingsSectionHeader(title = "Pet Management", icon = Icons.Default.Pets)
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            if (allPets.isEmpty()) {
+                                Text("No pets registered yet.", fontSize = 13.sp, color = TextMuted, modifier = Modifier.padding(vertical = 8.dp))
+                            } else {
+                                val activePetId = session.getActivePetId()
+                                allPets.forEachIndexed { index, pet ->
+                                    val isActive = pet.id == activePetId
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .clickable {
+                                                viewModel.selectActivePet(pet)
+                                                statusMessage = "${pet.name} is now your active pet."
+                                            }
+                                            .padding(vertical = 10.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            PetAvatar(
+                                                imageUrl = pet.imageUrl,
+                                                species = pet.species,
+                                                petName = pet.name,
+                                                modifier = Modifier.size(46.dp)
+                                            )
+                                            Spacer(Modifier.width(14.dp))
+                                            Column {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Text(pet.name, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = EmeraldDark)
+                                                    if (isActive) {
+                                                        Spacer(Modifier.width(8.dp))
+                                                        PetBadge(text = "ACTIVE", color = MintSage, textColor = EmeraldDark)
+                                                    }
                                                 }
+                                                Text("${pet.species} • ${pet.breed} • ${pet.weightKg} kg", fontSize = 12.sp, color = TextSecondary)
                                             }
                                         }
-                                        Text("${pet.species} • ${pet.breed} • ${pet.weightKg} kg", fontSize = 12.sp, color = Color(0xFF556B64))
+                                        IconButton(onClick = { petToDelete = pet }) {
+                                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = AlertRose, modifier = Modifier.size(20.dp))
+                                        }
                                     }
-                                }
-                                Row {
-                                    IconButton(onClick = { petToDelete = pet }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFC62828), modifier = Modifier.size(20.dp))
+                                    if (index < allPets.size - 1) {
+                                        HorizontalDivider(color = BorderSubtle)
                                     }
                                 }
                             }
-                            if (index < allPets.size - 1) {
-                                HorizontalDivider(color = Color(0xFFF0F4F1))
-                            }
-                        }
-                    }
 
-                    Spacer(Modifier.height(8.dp))
-                    Button(
-                        onClick = onNavigateAddPet,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
-                        Text("Add Another Pet")
-                    }
-                }
-            }
+                            Spacer(Modifier.height(12.dp))
 
-            Spacer(Modifier.height(20.dp))
-
-            // ================================================================
-            // Section C: Notifications
-            // ================================================================
-            SettingsSectionHeader(title = "Notifications", icon = Icons.Default.Notifications)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SettingSwitchRow(
-                        title = "Vaccination Reminders",
-                        subtitle = "Alerts for upcoming booster shots",
-                        checked = preferences.notifVaccination,
-                        onCheckedChange = { checked ->
-                            viewModel.updatePreferences(mapOf("notif_vaccination" to checked))
-                        }
-                    )
-                    HorizontalDivider(color = Color(0xFFF0F4F1))
-                    SettingSwitchRow(
-                        title = "Medication Reminders",
-                        subtitle = "Daily prescription alerts",
-                        checked = preferences.notifMedication,
-                        onCheckedChange = { checked ->
-                            viewModel.updatePreferences(mapOf("notif_medication" to checked))
-                        }
-                    )
-                    HorizontalDivider(color = Color(0xFFF0F4F1))
-                    SettingSwitchRow(
-                        title = "Appointment Reminders",
-                        subtitle = "Vet clinic and grooming bookings",
-                        checked = preferences.notifAppointments,
-                        onCheckedChange = { checked ->
-                            viewModel.updatePreferences(mapOf("notif_appointments" to checked))
-                        }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ================================================================
-            // Section D: Appearance
-            // ================================================================
-            SettingsSectionHeader(title = "Appearance", icon = Icons.Default.Palette)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Theme Mode", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF111816))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("system" to "System", "light" to "Light", "dark" to "Dark").forEach { (mode, label) ->
-                            FilterChip(
-                                selected = preferences.themeMode == mode,
-                                onClick = { viewModel.updatePreferences(mapOf("theme_mode" to mode)) },
-                                label = { Text(label, fontSize = 12.sp) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    HorizontalDivider(color = Color(0xFFF0F4F1))
-
-                    Text("Font Size", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF111816))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("small" to "Small", "normal" to "Default", "large" to "Large").forEach { (size, label) ->
-                            FilterChip(
-                                selected = preferences.fontSize == size,
-                                onClick = { viewModel.updatePreferences(mapOf("font_size" to size)) },
-                                label = { Text(label, fontSize = 12.sp) },
-                                modifier = Modifier.weight(1f)
+                            PetGradientButton(
+                                text = "Add Another Pet",
+                                icon = Icons.Default.Add,
+                                onClick = onNavigateAddPet
                             )
                         }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(20.dp))
-
-            // ================================================================
-            // Section E: Privacy & Security
-            // ================================================================
-            SettingsSectionHeader(title = "Privacy & Security", icon = Icons.Default.Security)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SettingsNavigationRow(
-                        title = "Manage App Permissions",
-                        subtitle = "Camera, storage, and notification permissions",
-                        onClick = {
-                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                data = Uri.fromParts("package", context.packageName, null)
-                            }
-                            context.startActivity(intent)
+                // ================================================================
+                // Section C: Notifications
+                // ================================================================
+                Column {
+                    SettingsSectionHeader(title = "Notifications", icon = Icons.Default.Notifications)
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            SettingSwitchRow(
+                                title = "Vaccination Reminders",
+                                subtitle = "Alerts for upcoming booster shots",
+                                checked = preferences.notifVaccination,
+                                onCheckedChange = { checked ->
+                                    viewModel.updatePreferences(mapOf("notif_vaccination" to checked))
+                                }
+                            )
+                            HorizontalDivider(color = BorderSubtle)
+                            SettingSwitchRow(
+                                title = "Medication Reminders",
+                                subtitle = "Daily prescription alerts",
+                                checked = preferences.notifMedication,
+                                onCheckedChange = { checked ->
+                                    viewModel.updatePreferences(mapOf("notif_medication" to checked))
+                                }
+                            )
+                            HorizontalDivider(color = BorderSubtle)
+                            SettingSwitchRow(
+                                title = "Appointment Reminders",
+                                subtitle = "Vet clinic and grooming bookings",
+                                checked = preferences.notifAppointments,
+                                onCheckedChange = { checked ->
+                                    viewModel.updatePreferences(mapOf("notif_appointments" to checked))
+                                }
+                            )
                         }
-                    )
-                    HorizontalDivider(color = Color(0xFFF0F4F1))
-                    SettingsNavigationRow(
-                        title = "Privacy Policy",
-                        subtitle = "How we protect and handle your pet data",
-                        onClick = { showPrivacyPolicyDialog = true }
-                    )
+                    }
                 }
-            }
 
-            Spacer(Modifier.height(20.dp))
-
-            // ================================================================
-            // Section F: Help & Support
-            // ================================================================
-            SettingsSectionHeader(title = "Help & Support", icon = Icons.Default.HelpOutline)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SettingsNavigationRow(
-                        title = "Pet Care FAQs",
-                        subtitle = "Tips, care guides, and answers to common questions",
-                        onClick = { showFaqDialog = true }
-                    )
-                    HorizontalDivider(color = Color(0xFFF0F4F1))
-                    SettingsNavigationRow(
-                        title = "Report a Problem",
-                        subtitle = "Submit issue reports or feedback to our team",
-                        onClick = { showReportProblemDialog = true }
-                    )
-                    HorizontalDivider(color = Color(0xFFF0F4F1))
-                    SettingsNavigationRow(
-                        title = "Contact Support",
-                        subtitle = "Email our dedicated care team at support@petcare.com",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("mailto:support@petcare.com")
-                                putExtra(Intent.EXTRA_SUBJECT, "Pet Care App Support Request")
+                // ================================================================
+                // Section D: Appearance
+                // ================================================================
+                Column {
+                    SettingsSectionHeader(title = "Appearance", icon = Icons.Default.Palette)
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text("Theme Mode", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = EmeraldDark)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf("system" to "System", "light" to "Light", "dark" to "Dark").forEach { (mode, label) ->
+                                    FilterChip(
+                                        selected = preferences.themeMode == mode,
+                                        onClick = { viewModel.updatePreferences(mapOf("theme_mode" to mode)) },
+                                        label = { Text(label, fontSize = 12.sp) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
                             }
-                            try { context.startActivity(intent) } catch (_: Exception) {}
+
+                            HorizontalDivider(color = BorderSubtle)
+
+                            Text("Font Size", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = EmeraldDark)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf("small" to "Small", "normal" to "Default", "large" to "Large").forEach { (size, label) ->
+                                    FilterChip(
+                                        selected = preferences.fontSize == size,
+                                        onClick = { viewModel.updatePreferences(mapOf("font_size" to size)) },
+                                        label = { Text(label, fontSize = 12.sp) },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
                         }
-                    )
+                    }
                 }
-            }
 
-            Spacer(Modifier.height(20.dp))
-
-            // ================================================================
-            // Section G: About App
-            // ================================================================
-            SettingsSectionHeader(title = "About App", icon = Icons.Default.Info)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Pet Care Companion", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = EmeraldDark)
-                    Text("Version: $versionName", fontSize = 13.sp, color = Color(0xFF556B64))
-                    Text("Smart, intelligent companion care for healthy, happy pets.", fontSize = 12.sp, color = Color.Gray)
+                // ================================================================
+                // Section E: Privacy & Security
+                // ================================================================
+                Column {
+                    SettingsSectionHeader(title = "Privacy & Security", icon = Icons.Default.Security)
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            SettingsNavigationRow(
+                                title = "Manage App Permissions",
+                                subtitle = "Camera, storage, and notification permissions",
+                                onClick = {
+                                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                        data = Uri.fromParts("package", context.packageName, null)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
+                            HorizontalDivider(color = BorderSubtle)
+                            SettingsNavigationRow(
+                                title = "Privacy Policy",
+                                subtitle = "How we protect and handle your pet data",
+                                onClick = { showPrivacyPolicyDialog = true }
+                            )
+                        }
+                    }
                 }
+
+                // ================================================================
+                // Section F: Help & Support
+                // ================================================================
+                Column {
+                    SettingsSectionHeader(title = "Help & Support", icon = Icons.Default.HelpOutline)
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            SettingsNavigationRow(
+                                title = "Pet Care FAQs",
+                                subtitle = "Tips, care guides, and answers to common questions",
+                                onClick = { showFaqDialog = true }
+                            )
+                            HorizontalDivider(color = BorderSubtle)
+                            SettingsNavigationRow(
+                                title = "Report a Problem",
+                                subtitle = "Submit issue reports or feedback to our team",
+                                onClick = { showReportProblemDialog = true }
+                            )
+                            HorizontalDivider(color = BorderSubtle)
+                            SettingsNavigationRow(
+                                title = "Contact Support",
+                                subtitle = "Email our dedicated care team at support@petcare.com",
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                        data = Uri.parse("mailto:support@petcare.com")
+                                        putExtra(Intent.EXTRA_SUBJECT, "Pet Care App Support Request")
+                                    }
+                                    try { context.startActivity(intent) } catch (_: Exception) {}
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // ================================================================
+                // Section G: About App
+                // ================================================================
+                Column {
+                    SettingsSectionHeader(title = "About App", icon = Icons.Default.Info)
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Pet Care Companion", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = EmeraldDark)
+                            Text("Version: $versionName", fontSize = 13.sp, color = TextSecondary)
+                            Text("Smart, intelligent companion care for healthy, happy pets.", fontSize = 12.sp, color = TextMuted)
+                        }
+                    }
+                }
+
+                // ================================================================
+                // Section H: Logout Option
+                // ================================================================
+                PetOutlinedButton(
+                    text = "Log Out of Account",
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    borderColor = AlertRose.copy(alpha = 0.5f),
+                    contentColor = AlertRose,
+                    onClick = { showLogoutDialog = true }
+                )
             }
-
-            Spacer(Modifier.height(24.dp))
-
-            // ================================================================
-            // Section H: Logout Option
-            // ================================================================
-            OutlinedButton(
-                onClick = { showLogoutDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC62828))
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFFC62828))
-                Spacer(Modifier.width(8.dp))
-                Text("Log Out", color = Color(0xFFC62828), fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            }
-
-            Spacer(Modifier.height(32.dp))
         }
     }
 }
@@ -989,9 +959,17 @@ fun SettingsScreen(
 fun SettingsSectionHeader(title: String, icon: ImageVector) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.padding(bottom = 8.dp)
+        modifier = Modifier.padding(bottom = 10.dp)
     ) {
-        Icon(icon, contentDescription = null, tint = MintSage, modifier = Modifier.size(18.dp))
+        Box(
+            modifier = Modifier
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(MintSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = MintSage, modifier = Modifier.size(15.dp))
+        }
         Spacer(Modifier.width(8.dp))
         Text(
             text = title,
@@ -1017,15 +995,16 @@ fun SettingSwitchRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF111816))
-            Text(subtitle, fontSize = 12.sp, color = Color(0xFF556B64))
+            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = EmeraldDark)
+            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF267D6D)
+                checkedTrackColor = MintSage,
+                uncheckedTrackColor = BorderSubtle
             )
         )
     }
@@ -1046,13 +1025,13 @@ fun SettingsNavigationRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color(0xFF111816))
-            Text(subtitle, fontSize = 12.sp, color = Color(0xFF556B64))
+            Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = EmeraldDark)
+            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
         }
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = Color(0xFF888888),
+            tint = TextMuted,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -1065,8 +1044,9 @@ fun FaqItem(q: String, a: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { expanded = !expanded }
-            .background(Color(0xFFF9FAF9), RoundedCornerShape(10.dp))
-            .padding(12.dp)
+            .background(SoftBackground, RoundedCornerShape(12.dp))
+            .border(1.dp, BorderSubtle, RoundedCornerShape(12.dp))
+            .padding(14.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1081,9 +1061,10 @@ fun FaqItem(q: String, a: String) {
             )
         }
         if (expanded) {
-            Spacer(Modifier.height(6.dp))
-            Text(a, fontSize = 12.sp, color = Color(0xFF4A5568))
+            Spacer(Modifier.height(8.dp))
+            Text(a, fontSize = 12.sp, color = TextSecondary, lineHeight = 18.sp)
         }
     }
 }
+
 

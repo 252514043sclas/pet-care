@@ -30,6 +30,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
@@ -40,11 +41,49 @@ object PetImageLoader {
     private val memoryCache = object : LruCache<String, Bitmap>(50) {}
 
     fun cacheBitmap(key: String, bitmap: Bitmap) {
-        memoryCache.put(key, bitmap)
+        if (key.isBlank()) return
+        memoryCache.put(key.trim(), bitmap)
+    }
+
+    fun cacheBitmap(context: Context, key: String, bitmap: Bitmap) {
+        if (key.isBlank()) return
+        val cleanKey = key.trim()
+        memoryCache.put(cleanKey, bitmap)
+        saveToPersistentStorage(context, cleanKey, bitmap)
     }
 
     fun getCachedBitmap(key: String): Bitmap? {
-        return memoryCache.get(key)
+        if (key.isBlank()) return null
+        return memoryCache.get(key.trim())
+    }
+
+    fun clearMemoryCache() {
+        memoryCache.evictAll()
+    }
+
+    private fun getStorageKey(key: String): String {
+        return try {
+            MessageDigest.getInstance("MD5")
+                .digest(key.trim().toByteArray())
+                .joinToString("") { "%02x".format(it) }
+        } catch (_: Exception) {
+            key.hashCode().toString()
+        }
+    }
+
+    fun saveToPersistentStorage(context: Context, key: String, bitmap: Bitmap) {
+        try {
+            val dir = File(context.filesDir, "persistent_pet_images")
+            if (!dir.exists()) dir.mkdirs()
+
+            val fileName = "${getStorageKey(key)}.jpg"
+            val file = File(dir, fileName)
+            FileOutputStream(file).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error saving bitmap to persistent storage: ${e.message}")
+        }
     }
 
     suspend fun loadBitmap(context: Context, urlOrPath: String?): Bitmap? = withContext(Dispatchers.IO) {
@@ -63,6 +102,7 @@ object PetImageLoader {
                 val bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 if (bmp != null) {
                     memoryCache.put(cacheKey, bmp)
+                    saveToPersistentStorage(context, cacheKey, bmp)
                     return@withContext bmp
                 }
             } catch (e: Exception) {
@@ -70,29 +110,52 @@ object PetImageLoader {
             }
         }
 
-        // 3. Resolve complete HTTP URL
+        // 3. Persistent disk storage check in internal filesDir
+        try {
+            val persistentDir = File(context.filesDir, "persistent_pet_images")
+            val pFile = File(persistentDir, "${getStorageKey(cacheKey)}.jpg")
+            if (pFile.exists() && pFile.length() > 0) {
+                val bmp = BitmapFactory.decodeFile(pFile.absolutePath)
+                if (bmp != null) {
+                    memoryCache.put(cacheKey, bmp)
+                    return@withContext bmp
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 4. Resolve complete HTTP URL
         val fullUrl = resolveFullUrl(context, cacheKey)
 
-        // 4. Disk cache check
+        // Also check if fullUrl was stored on persistent disk
+        try {
+            val persistentDir = File(context.filesDir, "persistent_pet_images")
+            val pFile = File(persistentDir, "${getStorageKey(fullUrl)}.jpg")
+            if (pFile.exists() && pFile.length() > 0) {
+                val bmp = BitmapFactory.decodeFile(pFile.absolutePath)
+                if (bmp != null) {
+                    memoryCache.put(cacheKey, bmp)
+                    return@withContext bmp
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 5. App cacheDir check
         val diskCacheDir = File(context.cacheDir, "pet_images")
         if (!diskCacheDir.exists()) diskCacheDir.mkdirs()
 
-        val md5Key = MessageDigest.getInstance("MD5")
-            .digest(fullUrl.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-        val diskFile = File(diskCacheDir, "$md5Key.cache")
-
+        val diskFile = File(diskCacheDir, "${getStorageKey(fullUrl)}.cache")
         if (diskFile.exists() && diskFile.length() > 0) {
             try {
                 val bmp = BitmapFactory.decodeFile(diskFile.absolutePath)
                 if (bmp != null) {
                     memoryCache.put(cacheKey, bmp)
+                    saveToPersistentStorage(context, cacheKey, bmp)
                     return@withContext bmp
                 }
             } catch (_: Exception) {}
         }
 
-        // 5. Download over HTTP via OkHttp
+        // 6. Download over HTTP via OkHttp
         try {
             val client = OkHttpClient.Builder()
                 .connectTimeout(12, TimeUnit.SECONDS)
@@ -114,6 +177,8 @@ object PetImageLoader {
                             diskFile.writeBytes(bytes)
                         } catch (_: Exception) {}
                         memoryCache.put(cacheKey, bmp)
+                        saveToPersistentStorage(context, cacheKey, bmp)
+                        saveToPersistentStorage(context, fullUrl, bmp)
                         return@withContext bmp
                     }
                 }
@@ -141,22 +206,53 @@ object PetImageLoader {
     }
 }
 
+/**
+ * Returns the proper animal vector drawable based on the species or breed string.
+ * Supports rich synonyms so Dogs, Cats, Rabbits, Birds, Hamsters, Fish and Other
+ * always receive their tailored visual icon.
+ */
 fun getPetDrawableRes(species: String?): Int {
     val clean = species?.lowercase()?.trim() ?: ""
     return when {
-        clean.contains("dog") || clean.contains("pup") || clean.contains("canine") || clean.contains("retriever") || clean.contains("shepherd") || clean.contains("hound") -> R.drawable.ic_pet_dog
-        clean.contains("cat") || clean.contains("kitten") || clean.contains("feline") || clean.contains("persian") || clean.contains("siamese") -> R.drawable.ic_pet_cat
-        clean.contains("rabbit") || clean.contains("bunny") || clean.contains("lop") || clean.contains("hare") -> R.drawable.ic_pet_rabbit
-        clean.contains("bird") || clean.contains("parrot") || clean.contains("canary") || clean.contains("finch") || clean.contains("cockatiel") -> R.drawable.ic_pet_bird
-        clean.contains("hamster") || clean.contains("guinea") || clean.contains("cavy") || clean.contains("gerbil") || clean.contains("mouse") || clean.contains("rat") -> R.drawable.ic_pet_hamster
-        clean.contains("fish") || clean.contains("goldfish") || clean.contains("betta") || clean.contains("aquarium") -> R.drawable.ic_pet_fish
+        clean.contains("dog") || clean.contains("pup") || clean.contains("canine") ||
+                clean.contains("retriever") || clean.contains("shepherd") || clean.contains("hound") ||
+                clean.contains("husky") || clean.contains("poodle") || clean.contains("bulldog") ||
+                clean.contains("terrier") || clean.contains("corgi") || clean.contains("labrador") ||
+                clean.contains("chihuahua") || clean.contains("beagle") || clean.contains("boxer") ||
+                clean.contains("rottweiler") -> R.drawable.ic_pet_dog
+
+        clean.contains("cat") || clean.contains("kitten") || clean.contains("kitty") ||
+                clean.contains("feline") || clean.contains("persian") || clean.contains("siamese") ||
+                clean.contains("shorthair") || clean.contains("meow") || clean.contains("bengal") ||
+                clean.contains("ragdoll") -> R.drawable.ic_pet_cat
+
+        clean.contains("rabbit") || clean.contains("bunny") || clean.contains("lop") ||
+                clean.contains("hare") || clean.contains("cottontail") -> R.drawable.ic_pet_rabbit
+
+        clean.contains("bird") || clean.contains("parrot") || clean.contains("canary") ||
+                clean.contains("finch") || clean.contains("cockatiel") || clean.contains("parakeet") ||
+                clean.contains("avian") || clean.contains("budgie") || clean.contains("cockatoo") ||
+                clean.contains("lovebird") -> R.drawable.ic_pet_bird
+
+        clean.contains("hamster") || clean.contains("guinea") || clean.contains("cavy") ||
+                clean.contains("gerbil") || clean.contains("mouse") || clean.contains("rat") ||
+                clean.contains("rodent") || clean.contains("chinchilla") -> R.drawable.ic_pet_hamster
+
+        clean.contains("fish") || clean.contains("goldfish") || clean.contains("betta") ||
+                clean.contains("aquarium") || clean.contains("guppy") || clean.contains("tetra") ||
+                clean.contains("aquatic") || clean.contains("koi") || clean.contains("cichlid") -> R.drawable.ic_pet_fish
+
         else -> R.drawable.ic_pet_default
     }
 }
 
+/**
+ * Returns the matching subtle background tint for each species badge.
+ */
 fun getPetBadgeColor(species: String?): Color {
     val clean = species?.lowercase()?.trim() ?: ""
     return when {
+        clean.contains("dog") || clean.contains("pup") -> Color(0xFFE8F5E9)
         clean.contains("cat") -> Color(0xFFFFF3E0)
         clean.contains("rabbit") -> Color(0xFFF3E5F5)
         clean.contains("bird") -> Color(0xFFE1F5FE)
@@ -178,11 +274,11 @@ fun PetAvatar(
     shadowElevation: Dp = 0.dp
 ) {
     val context = LocalContext.current
-    var bitmap by remember(imageUrl) {
+    var bitmap by remember(imageUrl, species) {
         mutableStateOf(if (!imageUrl.isNullOrBlank()) PetImageLoader.getCachedBitmap(imageUrl.trim()) else null)
     }
 
-    LaunchedEffect(imageUrl) {
+    LaunchedEffect(imageUrl, species) {
         if (!imageUrl.isNullOrBlank()) {
             val loaded = PetImageLoader.loadBitmap(context, imageUrl.trim())
             if (loaded != null) {
@@ -272,4 +368,3 @@ fun UserAvatar(
         }
     }
 }
-

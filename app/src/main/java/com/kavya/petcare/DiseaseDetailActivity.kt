@@ -11,9 +11,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,8 +23,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class DiseaseDetailActivity : ComponentActivity() {
@@ -61,246 +63,179 @@ fun DiseaseDetailScreen(
         "Do not apply dog or cat flea products, creams or home remedies."
     )
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFFBF9F1)
-    ) {
+    Scaffold(
+        topBar = {
+            PetModernTopBar(
+                title = "Condition Guide",
+                subtitle = "${activePet.name} • ${activePet.type.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }}",
+                onBack = onBack
+            )
+        },
+        containerColor = SoftBackground
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Back",
-                        tint = Color(0xFF1E3D3B)
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = "${activePet.name.uppercase()} · ${activePet.type.uppercase()}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFF2E6F65),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Text(
-                        text = "Condition guide",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E3D3B)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Surface(
-                color = Color(0xFFF3EAC2),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(
-                    text = "Example only · Vet exam needed",
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF6B5B16),
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
+            PetBadge(
+                text = "Educational Reference • Veterinary Exam Required",
+                containerColor = AmberAccent.copy(alpha = 0.15f),
+                contentColor = AmberAccent
+            )
 
             Text(
                 text = conditionName,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E3D3B)
+                color = TextPrimary
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color(0xFF4A5568),
-                lineHeight = 22.sp
+                color = TextSecondary,
+                lineHeight = 24.sp
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Card(
+            // Causes Card
+            PetModernCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                containerColor = WarmPearl
             ) {
                 Column(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "What can cause it?",
+                        text = "Potential Causes",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E3D3B)
+                        color = TextPrimary
                     )
                     Text(
                         text = causes,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF4A5568),
+                        color = TextSecondary,
                         lineHeight = 20.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "While you arrange a vet visit",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF1E3D3B)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
+            PetSectionHeader(title = "While Arranging a Vet Visit")
 
             steps.forEachIndexed { index, stepText ->
-                if (index > 0) Spacer(modifier = Modifier.height(12.dp))
-                StepItem(stepNumber = "${index + 1}", text = stepText)
+                StepCard(stepNumber = "${index + 1}", text = stepText)
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            PetSectionHeader(title = "When to See a Vet Immediately")
 
-            Text(
-                text = "When to see a vet",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF8B263E)
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Surface(
+            // Warning Card
+            PetModernCard(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFF7EBE8),
-                shape = RoundedCornerShape(16.dp)
+                containerColor = AlertRose.copy(alpha = 0.08f),
+                borderColor = AlertRose.copy(alpha = 0.3f)
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Warning,
                         contentDescription = "Warning",
-                        tint = Color(0xFFB8324E),
+                        tint = AlertRose,
                         modifier = Modifier.size(24.dp)
                     )
                     Text(
                         text = vetWarning,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF8B263E),
+                        fontWeight = FontWeight.Medium,
+                        color = AlertRose,
                         lineHeight = 20.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedButton(
+                PetOutlinedButton(
+                    text = "Save Report",
+                    icon = Icons.Default.Bookmark,
+                    modifier = Modifier.weight(1f),
                     onClick = {
                         viewModel.saveReport("Condition Report: $conditionName") {
-                            Toast.makeText(context, "Diagnostic report saved to medical history!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Diagnostic report saved to history!", Toast.LENGTH_SHORT).show()
                         }
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF1E3D3B))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Save",
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Save Report", fontWeight = FontWeight.SemiBold)
-                }
+                    }
+                )
 
-                Button(
+                PetGradientButton(
+                    text = "Find Vet",
+                    icon = Icons.Default.LocationOn,
+                    modifier = Modifier.weight(1f),
                     onClick = {
                         Toast.makeText(context, "Searching for nearby emergency vet clinics...", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E564F))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = "Find Vet",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Find Vet", fontWeight = FontWeight.SemiBold, color = Color.White)
-                }
+                    }
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             Text(
-                text = "Not a replacement for a vet.",
+                text = "This guide is for informational triage purposes and does not replace professional veterinary care.",
                 modifier = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF718096),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                color = TextMuted,
+                textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
 @Composable
-fun StepItem(stepNumber: String, text: String) {
-    Row(
+private fun StepCard(stepNumber: String, text: String) {
+    PetModernCard(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        containerColor = WarmPearl
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(Color(0xFFD3EBE7)),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MintSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stepNumber,
+                    color = EmeraldPrimary,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
             Text(
-                text = stepNumber,
-                color = Color(0xFF1E564F),
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium
+                text = text,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextPrimary,
+                lineHeight = 20.sp
             )
         }
-        Text(
-            text = text,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF4A5568),
-            lineHeight = 20.sp
-        )
     }
 }

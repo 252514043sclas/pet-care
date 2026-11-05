@@ -4,27 +4,33 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class SignUpActivity : ComponentActivity() {
@@ -66,74 +72,102 @@ fun SignUpScreen(
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
     var signUpError by remember { mutableStateOf<String?>(null) }
     val isLoading by viewModel.isLoading.collectAsState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF6F8F3))
-            .padding(24.dp),
+            .background(SoftBackground)
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Top Bar
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color(0xFF184D43)
-                )
+            Surface(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .clickable { onBack() },
+                shape = CircleShape,
+                color = Color.White,
+                shadowElevation = 2.dp,
+                border = BorderStroke(1.dp, BorderSubtle)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = EmeraldDark,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
 
-        Surface(
-            modifier = Modifier.size(72.dp),
-            shape = CircleShape,
-            color = Color(0xFFE8F5F2)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Default.Pets,
-                    contentDescription = "Logo",
-                    tint = Color(0xFF184D43),
-                    modifier = Modifier.size(36.dp)
-                )
+        // Hero double-ring logo
+        Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(MintSoft)
+            )
+            Surface(
+                modifier = Modifier
+                    .size(76.dp)
+                    .shadow(elevation = 6.dp, shape = CircleShape, ambientColor = MintSage.copy(alpha = 0.3f)),
+                shape = CircleShape,
+                color = Color.White,
+                border = BorderStroke(2.dp, MintSage.copy(alpha = 0.2f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Pets,
+                        contentDescription = "Logo",
+                        tint = EmeraldDark,
+                        modifier = Modifier.size(38.dp)
+                    )
+                }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         Text(
-            "Create Account",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF184D43)
+            text = "Create Account",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = EmeraldDark
         )
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
 
         Text(
-            "Let's start your pet care journey",
-            color = Color.Gray
+            text = "Join thousands of caring pet parents today",
+            fontSize = 14.sp,
+            color = TextSecondary
         )
 
         if (signUpError != null) {
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = Color(0xFFFFEBEE),
-                shape = RoundedCornerShape(12.dp)
+                color = AlertRoseSoft,
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, AlertRose.copy(alpha = 0.3f))
             ) {
                 Text(
                     text = signUpError ?: "",
-                    modifier = Modifier.padding(12.dp),
-                    color = Color(0xFFC62828),
+                    modifier = Modifier.padding(14.dp),
+                    color = AlertRose,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp
                 )
@@ -142,90 +176,78 @@ fun SignUpScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        OutlinedTextField(
-            value = name,
-            onValueChange = {
-                name = it
-                signUpError = null
-            },
+        // Card Container for Inputs
+        PetModernCard(
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Full name") },
-            singleLine = true,
-            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF111816),
-                unfocusedTextColor = Color(0xFF111816),
-                focusedBorderColor = Color(0xFF267D6D),
-                unfocusedBorderColor = Color(0xFFB5C4BE),
-                focusedLabelColor = Color(0xFF184D43),
-                unfocusedLabelColor = Color(0xFF556B64)
-            ),
-            shape = RoundedCornerShape(14.dp)
-        )
+            elevation = 2.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                PetTextField(
+                    value = name,
+                    onValueChange = {
+                        name = it
+                        signUpError = null
+                    },
+                    label = "Full Name",
+                    placeholder = "e.g. Alex Johnson",
+                    leadingIcon = Icons.Default.Person
+                )
 
-        Spacer(Modifier.height(14.dp))
+                PetTextField(
+                    value = email,
+                    onValueChange = {
+                        email = it
+                        signUpError = null
+                    },
+                    label = "Email Address",
+                    placeholder = "e.g. alex@example.com",
+                    leadingIcon = Icons.Default.Email
+                )
 
-        OutlinedTextField(
-            value = email,
-            onValueChange = {
-                email = it
-                signUpError = null
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Email address") },
-            singleLine = true,
-            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF111816),
-                unfocusedTextColor = Color(0xFF111816),
-                focusedBorderColor = Color(0xFF267D6D),
-                unfocusedBorderColor = Color(0xFFB5C4BE),
-                focusedLabelColor = Color(0xFF184D43),
-                unfocusedLabelColor = Color(0xFF556B64)
-            ),
-            shape = RoundedCornerShape(14.dp)
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = {
-                password = it
-                signUpError = null
-            },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Password (min 6 characters)") },
-            singleLine = true,
-            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 16.sp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF111816),
-                unfocusedTextColor = Color(0xFF111816),
-                focusedBorderColor = Color(0xFF267D6D),
-                unfocusedBorderColor = Color(0xFFB5C4BE),
-                focusedLabelColor = Color(0xFF184D43),
-                unfocusedLabelColor = Color(0xFF556B64)
-            ),
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        tint = Color(0xFF267D6D)
-                    )
-                }
-            },
-            shape = RoundedCornerShape(14.dp)
-        )
+                PetTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        signUpError = null
+                    },
+                    label = "Password (min 6 characters)",
+                    placeholder = "Create a strong password",
+                    leadingIcon = Icons.Default.Lock,
+                    isPassword = true
+                )
+            }
+        }
 
         Spacer(Modifier.height(24.dp))
 
-        Button(
+        val isValid = name.isNotBlank() && email.isNotBlank() && password.length >= 6
+
+        PetGradientButton(
+            text = "Create Account",
+            enabled = isValid && !isLoading,
+            isLoading = isLoading,
             onClick = {
+                val trimmedName = name.trim()
+                val trimmedEmail = email.trim()
+                if (trimmedName.isBlank()) {
+                    signUpError = "Please enter your full name."
+                    return@PetGradientButton
+                }
+                if (trimmedEmail.isBlank() || !android.util.Patterns.EMAIL_ADDRESS.matcher(trimmedEmail).matches()) {
+                    signUpError = "Please enter a valid email address."
+                    return@PetGradientButton
+                }
+                if (password.length < 6) {
+                    signUpError = "Password must be at least 6 characters."
+                    return@PetGradientButton
+                }
+
                 viewModel.register(
-                    name = name,
-                    email = email,
+                    name = trimmedName,
+                    email = trimmedEmail,
                     pass = password,
                     onSuccess = {
                         signUpError = null
@@ -235,32 +257,41 @@ fun SignUpScreen(
                         signUpError = err
                     }
                 )
-            },
-            enabled = !isLoading && name.isNotBlank() && email.isNotBlank() && password.length >= 6,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(54.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF267D6D)
-            )
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    modifier = Modifier.size(24.dp),
-                    strokeWidth = 2.dp
-                )
-            } else {
-                Text("Create Account")
             }
-        }
+        )
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
         Text(
-            "By continuing, you agree to our Terms & Privacy Policy.",
+            text = "By creating an account, you agree to our Terms of Service & Privacy Policy.",
             fontSize = 12.sp,
-            color = Color.Gray
+            color = TextMuted,
+            textAlign = TextAlign.Center,
+            lineHeight = 18.sp,
+            modifier = Modifier.padding(horizontal = 8.dp)
         )
+
+        Spacer(Modifier.height(20.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "Already have an account?",
+                color = TextSecondary,
+                fontSize = 14.sp
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = "Log In",
+                color = MintSage,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { onBack() }
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
     }
 }

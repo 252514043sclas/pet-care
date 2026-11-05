@@ -103,6 +103,14 @@ class SessionManager private constructor(context: Context) {
     fun getSavedActivePetAge(): String? = prefs.getString(KEY_ACTIVE_PET_AGE, null)
     fun getSavedActivePetWeight(): String? = prefs.getString(KEY_ACTIVE_PET_WEIGHT, null)
     fun getSavedActivePetImageUrl(): String? = prefs.getString(KEY_ACTIVE_PET_IMAGE_URL, null)
+
+    fun setActivePetImageUrl(url: String?) {
+        prefs.edit().putString(KEY_ACTIVE_PET_IMAGE_URL, url).apply()
+    }
+
+    fun setActivePetType(type: String) {
+        prefs.edit().putString(KEY_ACTIVE_PET_TYPE, type).apply()
+    }
     fun getSavedActivePetGender(): String? = prefs.getString(KEY_ACTIVE_PET_GENDER, null)
     fun getSavedActivePetMicrochip(): String? = prefs.getString(KEY_ACTIVE_PET_MICROCHIP, null)
     fun getSavedActivePetHealthScore(): Int = prefs.getInt(KEY_ACTIVE_PET_HEALTH_SCORE, 95)

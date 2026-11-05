@@ -3,15 +3,28 @@ package com.kavya.petcare
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class SafeVsToxicFoodsActivity : ComponentActivity() {
@@ -35,112 +48,169 @@ fun SafeVsToxicFoodsScreen(
     onBack: () -> Unit
 ) {
     val foodsFromApi by viewModel.safeToxicFoods.collectAsState()
+    var selectedFilter by remember { mutableStateOf("All") } // "All", "Safe", "Toxic"
 
     val fallbackFoods = listOf(
-        Pair("✅ Carrots", "Safe & nutritious snack for teeth"),
-        Pair("✅ Apples (No Seeds)", "Great source of vitamins A & C"),
-        Pair("❌ Chocolate", "Toxic! Contains harmful theobromine"),
-        Pair("❌ Grapes & Raisins", "Toxic! Can cause acute kidney failure"),
-        Pair("❌ Onions & Garlic", "Toxic! Damages red blood cells"),
-        Pair("✅ Plain Cooked Chicken", "Safe lean protein source"),
-        Pair("❌ Macadamia Nuts", "Toxic! Causes neurological weakness")
+        Pair("Carrots", "Safe & crunchy snack beneficial for dental health (Safe)"),
+        Pair("Apples (No Seeds)", "Great source of vitamins A & C; remove cores (Safe)"),
+        Pair("Chocolate", "Toxic! Contains theobromine, causing cardiac distress (Toxic)"),
+        Pair("Grapes & Raisins", "Toxic! Can trigger acute kidney failure even in small doses (Toxic)"),
+        Pair("Onions & Garlic", "Toxic! Damages red blood cells, causing anemia (Toxic)"),
+        Pair("Plain Cooked Chicken", "Safe lean protein source; avoid seasoning and cooked bones (Safe)"),
+        Pair("Macadamia Nuts", "Toxic! Causes muscle tremors, hypothermia, and weakness (Toxic)")
     )
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Safe vs Toxic Foods") })
-        }
+            PetModernTopBar(
+                title = "Safe vs Toxic Foods",
+                subtitle = "Veterinary dietary guide",
+                onBack = onBack
+            )
+        },
+        containerColor = SoftBackground
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = "Food Safety Guide",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Check before feeding your pet human foods",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            // Filter Pills Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (foodsFromApi.isNotEmpty()) {
-                    items(foodsFromApi) { foodItem ->
-                        val isSafe = foodItem.isSafe == 1
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSafe) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                                else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                            ),
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = foodItem.foodName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSafe) androidx.compose.ui.graphics.Color(0xFF0F4C3A) else androidx.compose.ui.graphics.Color(0xFFB00020)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = foodItem.description,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = androidx.compose.ui.graphics.Color(0xFF2C3E37)
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    items(fallbackFoods) { (food, desc) ->
-                        val isSafe = food.startsWith("✅")
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isSafe) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                                else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                            ),
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = food,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSafe) androidx.compose.ui.graphics.Color(0xFF0F4C3A) else androidx.compose.ui.graphics.Color(0xFFB00020)
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = desc,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = androidx.compose.ui.graphics.Color(0xFF2C3E37)
-                                )
-                            }
-                        }
+                listOf("All", "Safe Only", "Toxic Only").forEach { filter ->
+                    val isSelected = selectedFilter == filter
+                    Surface(
+                        onClick = { selectedFilter = filter },
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isSelected) EmeraldPrimary else WarmPearl,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (isSelected) EmeraldPrimary else BorderSubtle
+                        )
+                    ) {
+                        Text(
+                            text = filter,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) Color.White else TextSecondary,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = onBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = MaterialTheme.shapes.medium
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Back")
+                if (foodsFromApi.isNotEmpty()) {
+                    val filteredApiList = foodsFromApi.filter {
+                        val isSafe = it.isSafe == 1
+                        when (selectedFilter) {
+                            "Safe Only" -> isSafe
+                            "Toxic Only" -> !isSafe
+                            else -> true
+                        }
+                    }
+
+                    items(filteredApiList) { foodItem ->
+                        val isSafe = foodItem.isSafe == 1
+                        FoodCardItem(
+                            foodName = foodItem.foodName,
+                            description = foodItem.description,
+                            isSafe = isSafe
+                        )
+                    }
+                } else {
+                    val filteredFallback = fallbackFoods.filter { (_, desc) ->
+                        val isSafe = desc.contains("(Safe)")
+                        when (selectedFilter) {
+                            "Safe Only" -> isSafe
+                            "Toxic Only" -> !isSafe
+                            else -> true
+                        }
+                    }
+
+                    items(filteredFallback) { (food, desc) ->
+                        val isSafe = desc.contains("(Safe)")
+                        val cleanDesc = desc.replace(" (Safe)", "").replace(" (Toxic)", "")
+                        FoodCardItem(
+                            foodName = food,
+                            description = cleanDesc,
+                            isSafe = isSafe
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FoodCardItem(
+    foodName: String,
+    description: String,
+    isSafe: Boolean
+) {
+    val badgeBg = if (isSafe) MintSoft else AlertRose.copy(alpha = 0.12f)
+    val badgeColor = if (isSafe) EmeraldPrimary else AlertRose
+
+    PetModernCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = WarmPearl
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(badgeBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isSafe) Icons.Default.Check else Icons.Default.Close,
+                    contentDescription = null,
+                    tint = badgeColor,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = foodName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    PetBadge(
+                        text = if (isSafe) "SAFE" else "TOXIC",
+                        containerColor = badgeBg,
+                        contentColor = badgeColor
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    lineHeight = 18.sp
+                )
             }
         }
     }

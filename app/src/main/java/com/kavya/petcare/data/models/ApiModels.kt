@@ -66,7 +66,9 @@ data class CreatePetRequest(
     @SerializedName("age_years") val ageYears: String,
     @SerializedName("weight_kg") val weightKg: Double,
     @SerializedName("gender") val gender: String = "Female",
-    @SerializedName("microchip_id") val microchipId: String? = null
+    @SerializedName("microchip_id") val microchipId: String? = null,
+    @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("image_base64") val imageBase64: String? = null
 )
 
 data class UpdatePetRequest(
@@ -80,6 +82,7 @@ data class UpdatePetRequest(
     @SerializedName("health_score") val healthScore: Int? = null,
     @SerializedName("vaccination_status") val vaccinationStatus: String? = null,
     @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("image_base64") val imageBase64: String? = null,
     @SerializedName("is_active") val isActive: Int? = null
 )
 

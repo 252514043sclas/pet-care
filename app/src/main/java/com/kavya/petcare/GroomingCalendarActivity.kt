@@ -3,15 +3,25 @@ package com.kavya.petcare
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class GroomingCalendarActivity : ComponentActivity() {
@@ -46,28 +56,22 @@ fun GroomingCalendarScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Grooming Calendar") })
-        }
+            PetModernTopBar(
+                title = "Grooming Calendar",
+                subtitle = "Upcoming care for ${activePet.name}",
+                onBack = onBack
+            )
+        },
+        containerColor = SoftBackground
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = "Scheduled Tasks",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Upcoming grooming and wellness schedule for ${activePet.name}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            PetSectionHeader(title = "Scheduled Tasks")
 
             LazyColumn(
                 modifier = Modifier.weight(1f),
@@ -75,67 +79,72 @@ fun GroomingCalendarScreen(
             ) {
                 if (tasksFromApi.isNotEmpty()) {
                     items(tasksFromApi) { taskItem ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = taskItem.dateTime,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = taskItem.task,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = androidx.compose.ui.graphics.Color(0xFF111816)
-                                )
-                            }
-                        }
+                        CalendarTaskCard(dateTime = taskItem.dateTime, task = taskItem.task)
                     }
                 } else {
                     items(fallbackSchedule) { (date, task) ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.large
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(
-                                    text = date,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    text = task,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = androidx.compose.ui.graphics.Color(0xFF111816)
-                                )
-                            }
-                        }
+                        CalendarTaskCard(dateTime = date, task = task)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = onBack,
+            PetGradientButton(
+                text = "Back to Grooming Home",
+                onClick = onBack
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalendarTaskCard(dateTime: String, task: String) {
+    PetModernCard(
+        modifier = Modifier.fillMaxWidth(),
+        containerColor = WarmPearl
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = MaterialTheme.shapes.medium
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MintSoft),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Back")
+                Icon(
+                    imageVector = Icons.Default.Event,
+                    contentDescription = null,
+                    tint = EmeraldPrimary,
+                    modifier = Modifier.size(22.dp)
+                )
             }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = dateTime,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MintSage
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = task,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
+
+            PetBadge(
+                text = "Scheduled",
+                containerColor = SoftBackground,
+                contentColor = EmeraldPrimary
+            )
         }
     }
 }

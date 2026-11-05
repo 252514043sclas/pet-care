@@ -39,9 +39,32 @@ class PetController {
         $checkActive->execute([':user_id' => $currentUser['id']]);
         $isActive = $checkActive->fetch() ? 0 : 1;
 
+        // Process initial pet image if provided
+        $imageUrl = null;
+        if (!empty($input['image_base64'])) {
+            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/pets/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $data = $input['image_base64'];
+            $extension = 'jpg';
+            if (preg_match('#^data:image/(\w+);base64,#i', $data, $matches)) {
+                $extension = strtolower($matches[1]) === 'png' ? 'png' : 'jpg';
+                $data = substr($data, strpos($data, ',') + 1);
+            }
+            $imageBinary = base64_decode($data);
+            if ($imageBinary) {
+                $filename = 'pet_' . $currentUser['id'] . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+                file_put_contents($uploadDir . $filename, $imageBinary);
+                $imageUrl = 'uploads/pets/' . $filename;
+            }
+        } elseif (!empty($input['image_url'])) {
+            $imageUrl = trim((string)$input['image_url']);
+        }
+
         $stmt = $pdo->prepare(
-            'INSERT INTO pets (user_id, name, species, breed, age_years, weight_kg, gender, microchip_id, health_score, vaccination_status, is_active, created_at)
-             VALUES (:user_id, :name, :species, :breed, :age_years, :weight_kg, :gender, :microchip_id, :health_score, :vaccination_status, :is_active, NOW())'
+            'INSERT INTO pets (user_id, name, species, breed, age_years, weight_kg, gender, microchip_id, health_score, vaccination_status, image_url, is_active, created_at)
+             VALUES (:user_id, :name, :species, :breed, :age_years, :weight_kg, :gender, :microchip_id, :health_score, :vaccination_status, :image_url, :is_active, NOW())'
         );
 
         $stmt->execute([
@@ -55,6 +78,7 @@ class PetController {
             ':microchip_id' => $input['microchip_id'] ?? ('#' . rand(100000000, 999999999)),
             ':health_score' => isset($input['health_score']) ? (int)$input['health_score'] : 95,
             ':vaccination_status' => $input['vaccination_status'] ?? 'Up to Date',
+            ':image_url' => $imageUrl,
             ':is_active' => $isActive,
         ]);
 
@@ -134,6 +158,28 @@ class PetController {
             }
         }
 
+        if (!empty($input['image_base64'])) {
+            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/pets/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+            $data = $input['image_base64'];
+            $extension = 'jpg';
+            if (preg_match('#^data:image/(\w+);base64,#i', $data, $matches)) {
+                $extension = strtolower($matches[1]) === 'png' ? 'png' : 'jpg';
+                $data = substr($data, strpos($data, ',') + 1);
+            }
+            $imageBinary = base64_decode($data);
+            if ($imageBinary) {
+                $filename = 'pet_' . $petId . '_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $extension;
+                file_put_contents($uploadDir . $filename, $imageBinary);
+                // Remove existing image_url if already set in fields
+                $fields = array_filter($fields, fn($f) => strpos($f, 'image_url') === false);
+                $fields[] = "`image_url` = :image_url";
+                $params[':image_url'] = 'uploads/pets/' . $filename;
+            }
+        }
+
         if (empty($fields)) {
             Response::error('No fields provided for update', 400);
         }
@@ -148,8 +194,8 @@ class PetController {
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
 
-        $fetchStmt = $pdo->prepare('SELECT * FROM pets WHERE id = :id');
-        $fetchStmt->execute([':id' => $petId]);
+        $fetchStmt = $pdo->prepare('SELECT * FROM pets WHERE id = :id AND user_id = :user_id');
+        $fetchStmt->execute([':id' => $petId, ':user_id' => $currentUser['id']]);
         $pet = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
         Response::success($pet, 'Pet profile updated successfully');
@@ -274,11 +320,11 @@ class PetController {
 
         // Store relative path
         $relativeUrl = 'uploads/pets/' . $filename;
-        $stmt = $pdo->prepare('UPDATE pets SET image_url = :url, updated_at = NOW() WHERE id = :id');
-        $stmt->execute([':url' => $relativeUrl, ':id' => $petId]);
+        $stmt = $pdo->prepare('UPDATE pets SET image_url = :url, updated_at = NOW() WHERE id = :id AND user_id = :user_id');
+        $stmt->execute([':url' => $relativeUrl, ':id' => $petId, ':user_id' => $currentUser['id']]);
 
-        $fetchStmt = $pdo->prepare('SELECT * FROM pets WHERE id = :id');
-        $fetchStmt->execute([':id' => $petId]);
+        $fetchStmt = $pdo->prepare('SELECT * FROM pets WHERE id = :id AND user_id = :user_id');
+        $fetchStmt->execute([':id' => $petId, ':user_id' => $currentUser['id']]);
         $updatedPet = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
         Response::success([

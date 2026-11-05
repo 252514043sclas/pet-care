@@ -7,11 +7,11 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,24 +24,23 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kavya.petcare.ui.EmeraldDark
-import com.kavya.petcare.ui.MintSage
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.components.PetAvatar
 import com.kavya.petcare.ui.components.PetImageLoader
 import com.kavya.petcare.ui.theme.PetCareTheme
@@ -78,7 +77,6 @@ fun PetDetailProfileScreen(
 ) {
     val context = LocalContext.current
     val activePet by viewModel.activePet.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
 
     var showEditDialog by remember { mutableStateOf(false) }
     var showPhotoChooserDialog by remember { mutableStateOf(false) }
@@ -114,17 +112,20 @@ fun PetDetailProfileScreen(
     fun uploadBitmap(bitmap: Bitmap) {
         localPreviewBitmap = bitmap
         val stream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
         val byteArray = stream.toByteArray()
         val base64 = "data:image/jpeg;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
-        PetImageLoader.cacheBitmap(base64, bitmap)
+        PetImageLoader.cacheBitmap(context, base64, bitmap)
         val petId = activePet.id.toIntOrNull() ?: 1
-        viewModel.uploadPetPhoto(petId, base64) { success, msg ->
+        viewModel.uploadPetPhoto(petId, base64, bitmap) { _, msg ->
             userMessage = msg
         }
     }
 
-    // Gallery Picker Launcher
+    LaunchedEffect(activePet.id) {
+        localPreviewBitmap = null
+    }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -141,7 +142,6 @@ fun PetDetailProfileScreen(
         }
     }
 
-    // Camera Capture Launcher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap: Bitmap? ->
@@ -173,12 +173,12 @@ fun PetDetailProfileScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (editError != null) {
                         Text(
                             text = editError ?: "",
-                            color = Color(0xFFC62828),
+                            color = AlertRose,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -189,24 +189,16 @@ fun PetDetailProfileScreen(
                         onValueChange = { editName = it; editError = null },
                         label = { Text("Pet Name *") },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color(0xFF111816),
-                            unfocusedTextColor = Color(0xFF111816)
-                        ),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     OutlinedTextField(
                         value = editType,
                         onValueChange = { editType = it; editError = null },
-                        label = { Text("Species / Type * (e.g. Rabbit, Dog, Cat)") },
+                        label = { Text("Species / Animal * (e.g. Rabbit, Dog, Cat)") },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color(0xFF111816),
-                            unfocusedTextColor = Color(0xFF111816)
-                        ),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -215,11 +207,7 @@ fun PetDetailProfileScreen(
                         onValueChange = { editBreed = it; editError = null },
                         label = { Text("Breed *") },
                         singleLine = true,
-                        textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color(0xFF111816),
-                            unfocusedTextColor = Color(0xFF111816)
-                        ),
+                        shape = RoundedCornerShape(14.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -230,13 +218,9 @@ fun PetDetailProfileScreen(
                         OutlinedTextField(
                             value = editAge,
                             onValueChange = { editAge = it; editError = null },
-                            label = { Text("Age (e.g. 1.5 yrs)") },
+                            label = { Text("Age") },
                             singleLine = true,
-                            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color(0xFF111816),
-                                unfocusedTextColor = Color(0xFF111816)
-                            ),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         )
 
@@ -245,11 +229,7 @@ fun PetDetailProfileScreen(
                             onValueChange = { editWeight = it; editError = null },
                             label = { Text("Weight (kg)") },
                             singleLine = true,
-                            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color(0xFF111816),
-                                unfocusedTextColor = Color(0xFF111816)
-                            ),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -260,27 +240,19 @@ fun PetDetailProfileScreen(
                     ) {
                         OutlinedTextField(
                             value = editGender,
-                            onValueChange = { editGender = it },
+                            onValueChange = { editGender = it; editError = null },
                             label = { Text("Gender") },
                             singleLine = true,
-                            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color(0xFF111816),
-                                unfocusedTextColor = Color(0xFF111816)
-                            ),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         )
 
                         OutlinedTextField(
                             value = editMicrochip,
-                            onValueChange = { editMicrochip = it },
+                            onValueChange = { editMicrochip = it; editError = null },
                             label = { Text("Microchip ID") },
                             singleLine = true,
-                            textStyle = TextStyle(color = Color(0xFF111816), fontSize = 15.sp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color(0xFF111816),
-                                unfocusedTextColor = Color(0xFF111816)
-                            ),
+                            shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -292,16 +264,26 @@ fun PetDetailProfileScreen(
                         val trimmedName = editName.trim()
                         val trimmedType = editType.trim()
                         val trimmedBreed = editBreed.trim()
-                        if (trimmedName.isBlank() || trimmedBreed.isBlank() || trimmedType.isBlank()) {
-                            editError = "Please fill in all required fields (Name, Type, Breed)."
+
+                        if (trimmedName.isBlank()) {
+                            editError = "Pet name cannot be empty."
                             return@Button
                         }
-                        val petId = activePet.id.toIntOrNull()?.takeIf { it > 0 }
-                            ?: com.kavya.petcare.data.session.SessionManager.getInstance(context).getActivePetId()
+                        if (trimmedType.isBlank()) {
+                            editError = "Pet species / type cannot be empty."
+                            return@Button
+                        }
+                        if (trimmedBreed.isBlank()) {
+                            editError = "Pet breed cannot be empty."
+                            return@Button
+                        }
+
+                        val numericPetId = activePet.id.toIntOrNull() ?: 1
                         isSavingPet = true
                         editError = null
+
                         viewModel.editPetProfile(
-                            petId = petId,
+                            petId = numericPetId,
                             name = trimmedName,
                             breed = trimmedBreed,
                             age = editAge,
@@ -314,19 +296,20 @@ fun PetDetailProfileScreen(
                                 showEditDialog = false
                                 userMessage = "Pet profile updated successfully!"
                             },
-                            onError = { err ->
+                            onError = { errMsg ->
                                 isSavingPet = false
-                                editError = err
+                                editError = errMsg
                             }
                         )
                     },
                     enabled = !isSavingPet,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D))
+                    colors = ButtonDefaults.buttonColors(containerColor = MintSage),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
                     if (isSavingPet) {
                         CircularProgressIndicator(
                             color = Color.White,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
@@ -341,62 +324,65 @@ fun PetDetailProfileScreen(
                             showEditDialog = false
                             editError = null
                         }
-                    },
-                    enabled = !isSavingPet
+                    }
                 ) {
-                    Text("Cancel", color = Color.Gray)
+                    Text("Cancel", color = TextSecondary)
                 }
             },
             containerColor = Color.White,
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(22.dp)
         )
     }
 
     // ------------------------------------------------------------------------
-    // Dialog: Photo Source Chooser
+    // Dialog: Photo Chooser
     // ------------------------------------------------------------------------
     if (showPhotoChooserDialog) {
         AlertDialog(
             onDismissRequest = { showPhotoChooserDialog = false },
             title = {
                 Text(
-                    text = "Change Pet Photo",
+                    text = "Update Pet Photo",
                     fontWeight = FontWeight.Bold,
                     color = EmeraldDark
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Select a photo source for ${activePet.name}:", color = Color(0xFF2D3748))
-                    Button(
-                        onClick = {
-                            showPhotoChooserDialog = false
-                            cameraLauncher.launch(null)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D))
-                    ) {
-                        Text("📷 Take Photo with Camera")
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            showPhotoChooserDialog = false
-                            galleryLauncher.launch("image/*")
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("🖼️ Choose from Gallery", color = Color(0xFF267D6D))
-                    }
+                Text(
+                    text = "Choose a photo source for ${activePet.name}:",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showPhotoChooserDialog = false
+                        galleryLauncher.launch("image/*")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MintSage),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Gallery")
                 }
             },
-            confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showPhotoChooserDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                Button(
+                    onClick = {
+                        showPhotoChooserDialog = false
+                        cameraLauncher.launch(null)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Camera")
                 }
             },
             containerColor = Color.White,
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(22.dp)
         )
     }
 
@@ -406,140 +392,125 @@ fun PetDetailProfileScreen(
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
-            title = {
-                Text(
-                    text = "Confirm Logout",
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFC62828)
-                )
-            },
-            text = {
-                Text(
-                    text = "Are you sure you want to log out of Pet Care?",
-                    color = Color(0xFF2D3748),
-                    fontSize = 15.sp
-                )
-            },
+            title = { Text("Log Out", fontWeight = FontWeight.Bold, color = AlertRose) },
+            text = { Text("Are you sure you want to log out of Pet Care?", color = TextSecondary) },
             confirmButton = {
                 Button(
                     onClick = {
                         showLogoutDialog = false
-                        viewModel.logout {
-                            onLoggedOut()
-                        }
+                        viewModel.logout { onLoggedOut() }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFC62828))
+                    colors = ButtonDefaults.buttonColors(containerColor = AlertRose),
+                    shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Logout", color = Color.White)
+                    Text("Log Out")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancel", color = Color.Gray)
+                    Text("Cancel", color = TextSecondary)
                 }
             },
             containerColor = Color.White,
-            shape = RoundedCornerShape(20.dp)
+            shape = RoundedCornerShape(22.dp)
         )
     }
 
     // ------------------------------------------------------------------------
-    // Screen Layout
+    // Main Profile Screen Layout
     // ------------------------------------------------------------------------
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFFF6F8F3)
+        color = SoftBackground
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Top Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = EmeraldDark
-                        )
+            // Modern Top Bar
+            PetModernTopBar(
+                title = "Pet Profile",
+                onBack = onBack,
+                actions = {
+                    Surface(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .clickable { openEditDialog() },
+                        shape = CircleShape,
+                        color = Color.White,
+                        border = BorderStroke(1.dp, BorderSubtle),
+                        shadowElevation = 2.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Profile", tint = MintSage, modifier = Modifier.size(18.dp))
+                        }
                     }
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "Pet Profile",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = EmeraldDark
-                    )
-                }
-
-                Row {
-                    IconButton(onClick = { openEditDialog() }) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit Profile",
-                            tint = Color(0xFF267D6D)
-                        )
-                    }
-                    IconButton(onClick = { showLogoutDialog = true }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Logout",
-                            tint = Color(0xFFC62828)
-                        )
+                    Surface(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .clickable { showLogoutDialog = true },
+                        shape = CircleShape,
+                        color = Color.White,
+                        border = BorderStroke(1.dp, BorderSubtle),
+                        shadowElevation = 2.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = AlertRose, modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
-            }
-
-            Spacer(Modifier.height(16.dp))
+            )
 
             // User Notification Message Banner
             if (userMessage != null) {
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFE8F5F2)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = MintSoft,
+                    border = BorderStroke(1.dp, MintSage.copy(alpha = 0.3f))
                 ) {
                     Row(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = userMessage ?: "",
-                            color = Color(0xFF184D43),
+                            color = EmeraldDark,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(onClick = { userMessage = null }) {
-                            Text("OK", color = Color(0xFF267D6D), fontWeight = FontWeight.Bold)
+                            Text("OK", color = MintSage, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
             }
+
+            Spacer(Modifier.height(12.dp))
 
             // Pet Avatar with Camera Badge
             Box(
                 contentAlignment = Alignment.BottomEnd,
-                modifier = Modifier.size(110.dp)
+                modifier = Modifier.size(124.dp)
             ) {
                 Surface(
                     modifier = Modifier
-                        .size(104.dp)
+                        .size(116.dp)
+                        .shadow(12.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.35f))
                         .clip(CircleShape)
                         .clickable { showPhotoChooserDialog = true },
                     shape = CircleShape,
-                    color = Color(0xFFE8F5F2),
-                    shadowElevation = 4.dp
+                    color = Color.White,
+                    border = BorderStroke(3.5.dp, MintSage.copy(alpha = 0.35f))
                 ) {
                     if (localPreviewBitmap != null) {
                         Image(
@@ -558,14 +529,16 @@ fun PetDetailProfileScreen(
                     }
                 }
 
-                // Edit photo badge
+                // Camera Badge Button
                 Surface(
                     modifier = Modifier
-                        .size(34.dp)
+                        .size(36.dp)
+                        .shadow(4.dp, CircleShape)
+                        .clip(CircleShape)
                         .clickable { showPhotoChooserDialog = true },
                     shape = CircleShape,
-                    color = Color(0xFF267D6D),
-                    shadowElevation = 4.dp
+                    color = MintSage,
+                    border = BorderStroke(2.dp, Color.White)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
@@ -578,114 +551,158 @@ fun PetDetailProfileScreen(
                 }
             }
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(14.dp))
 
             Text(
                 text = activePet.name,
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.ExtraBold,
                 color = EmeraldDark
             )
 
-            Text(
-                text = "${activePet.breed} ${activePet.type}",
-                fontSize = 15.sp,
-                color = Color(0xFF4A5568)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                PetBadge(text = activePet.type.uppercase(), color = MintSage)
+                Text("•", color = TextMuted)
+                Text(
+                    text = activePet.breed,
+                    fontSize = 14.sp,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
 
             Spacer(Modifier.height(24.dp))
 
-            // Profile Details Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            // Quick Stats 4-Pill Grid
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    ProfileRow(label = "Species", value = activePet.type)
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
-                    ProfileRow(label = "Breed", value = activePet.breed)
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
-                    ProfileRow(label = "Age", value = activePet.age)
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
-                    ProfileRow(label = "Weight", value = activePet.weight)
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
-                    ProfileRow(label = "Gender", value = activePet.gender)
-                    HorizontalDivider(color = Color(0xFFEEEEEE))
-                    ProfileRow(label = "Microchip ID", value = activePet.microchipId)
-                }
+                PetStatPill(
+                    label = "Weight",
+                    value = activePet.weight,
+                    icon = Icons.Default.MonitorWeight,
+                    tintColor = SkyBlue,
+                    modifier = Modifier.weight(1f)
+                )
+                PetStatPill(
+                    label = "Age",
+                    value = activePet.age,
+                    icon = Icons.Default.Cake,
+                    tintColor = AmberAccent,
+                    modifier = Modifier.weight(1f)
+                )
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
 
-            // Health Status Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5F2))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        "Health & Vaccination Status",
-                        fontWeight = FontWeight.Bold,
-                        color = EmeraldDark,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        "Vaccinations: ${activePet.vaccinationStatus}. Health score: ${activePet.healthScore}/100.",
-                        color = Color(0xFF2D3748),
-                        fontSize = 14.sp
-                    )
+                PetStatPill(
+                    label = "Health",
+                    value = "${activePet.healthScore}/100",
+                    icon = Icons.Default.Favorite,
+                    tintColor = AlertRose,
+                    modifier = Modifier.weight(1f)
+                )
+                PetStatPill(
+                    label = "Vaccine",
+                    value = activePet.vaccinationStatus,
+                    icon = Icons.Default.Shield,
+                    tintColor = MintSage,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Profile Details Section Card
+            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                PetSectionHeader(title = "Pet Profile Information")
+                Spacer(Modifier.height(12.dp))
+
+                PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        ProfileInfoRow(icon = Icons.Default.Pets, label = "Species / Animal", value = activePet.type)
+                        HorizontalDivider(color = BorderSubtle)
+                        ProfileInfoRow(icon = Icons.Default.Category, label = "Breed", value = activePet.breed)
+                        HorizontalDivider(color = BorderSubtle)
+                        ProfileInfoRow(icon = Icons.Default.CalendarToday, label = "Age", value = activePet.age)
+                        HorizontalDivider(color = BorderSubtle)
+                        ProfileInfoRow(icon = Icons.Default.Scale, label = "Weight", value = activePet.weight)
+                        HorizontalDivider(color = BorderSubtle)
+                        ProfileInfoRow(icon = Icons.Default.Female, label = "Gender", value = activePet.gender)
+                        HorizontalDivider(color = BorderSubtle)
+                        ProfileInfoRow(icon = Icons.Default.QrCode, label = "Microchip ID", value = activePet.microchipId)
+                    }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
             // Action Buttons
-            Button(
-                onClick = { openEditDialog() },
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF267D6D))
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Edit Pet Details", color = Color.White, fontWeight = FontWeight.SemiBold)
-            }
+                PetGradientButton(
+                    text = "Edit Pet Profile",
+                    icon = Icons.Default.Edit,
+                    onClick = { openEditDialog() }
+                )
 
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedButton(
-                onClick = { showLogoutDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(26.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFC62828))
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(18.dp), tint = Color(0xFFC62828))
-                Spacer(Modifier.width(8.dp))
-                Text("Log Out", color = Color(0xFFC62828), fontWeight = FontWeight.SemiBold)
+                PetOutlinedButton(
+                    text = "Log Out of Account",
+                    icon = Icons.AutoMirrored.Filled.Logout,
+                    borderColor = AlertRose.copy(alpha = 0.5f),
+                    contentColor = AlertRose,
+                    onClick = { showLogoutDialog = true }
+                )
             }
         }
     }
 }
 
 @Composable
-fun ProfileRow(label: String, value: String) {
+fun ProfileInfoRow(icon: ImageVector, label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, color = Color(0xFF556B64), fontSize = 15.sp, fontWeight = FontWeight.Medium)
-        Text(text = value, fontWeight = FontWeight.Bold, color = Color(0xFF111816), fontSize = 15.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(MintSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MintSage,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(text = label, color = TextSecondary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        }
+        Text(text = value, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 14.sp)
     }
 }

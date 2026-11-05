@@ -3,17 +3,26 @@ package com.kavya.petcare
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class AddReminderActivity : ComponentActivity() {
@@ -24,7 +33,8 @@ class AddReminderActivity : ComponentActivity() {
                 val viewModel = PetViewModel.getShared(this)
                 AddReminderScreen(
                     viewModel = viewModel,
-                    onReminderSaved = { finish() }
+                    onReminderSaved = { finish() },
+                    onBack = { finish() }
                 )
             }
         }
@@ -34,7 +44,8 @@ class AddReminderActivity : ComponentActivity() {
 @Composable
 fun AddReminderScreen(
     viewModel: PetViewModel = PetViewModel.getShared(LocalContext.current),
-    onReminderSaved: () -> Unit
+    onReminderSaved: () -> Unit,
+    onBack: () -> Unit = {}
 ) {
     var reminderTitle by remember { mutableStateOf("") }
     var reminderDate by remember { mutableStateOf("") }
@@ -43,73 +54,121 @@ fun AddReminderScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Add Grooming Reminder") })
-        }
+            PetModernTopBar(
+                title = "New Care Reminder",
+                subtitle = "Set scheduled reminder",
+                onBack = onBack
+            )
+        },
+        containerColor = SoftBackground
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Set New Reminder",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            OutlinedTextField(
-                value = reminderTitle,
-                onValueChange = { reminderTitle = it },
-                label = { Text("Reminder Title (e.g. Bath & Fur Brushing)") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
-                    unfocusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
-                    focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF184D43),
-                    unfocusedLabelColor = androidx.compose.ui.graphics.Color(0xFF2C3E37)
-                ),
+            PetModernCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = reminderDate,
-                onValueChange = { reminderDate = it },
-                label = { Text("Date & Time (e.g. 5:30 PM or Nov 2, 10:00 AM)") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
-                    unfocusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
-                    focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF184D43),
-                    unfocusedLabelColor = androidx.compose.ui.graphics.Color(0xFF2C3E37)
-                ),
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                containerColor = WarmPearl
             ) {
-                Text(
-                    text = "Enable Push Notification",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                Switch(
-                    checked = notificationsEnabled,
-                    onCheckedChange = { notificationsEnabled = it }
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "Reminder Details",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+
+                    PetTextField(
+                        value = reminderTitle,
+                        onValueChange = { reminderTitle = it },
+                        label = "Activity / Task",
+                        placeholder = "e.g., Bath, Nail Trim, or Coat Brushing",
+                        leadingIcon = Icons.Default.Alarm
+                    )
+
+                    PetTextField(
+                        value = reminderDate,
+                        onValueChange = { reminderDate = it },
+                        label = "Scheduled Time / Date",
+                        placeholder = "e.g., Tomorrow, 5:30 PM",
+                        leadingIcon = Icons.Default.Schedule
+                    )
+                }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // Notification toggle card
+            PetModernCard(
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = WarmPearl
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MintSoft),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = EmeraldPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Push Notification",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Alert device when due",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                    }
 
-            Button(
+                    Switch(
+                        checked = notificationsEnabled,
+                        onCheckedChange = { notificationsEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = EmeraldPrimary,
+                            checkedTrackColor = MintSage.copy(alpha = 0.35f),
+                            uncheckedThumbColor = WarmPearl,
+                            uncheckedTrackColor = BorderSubtle
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            PetGradientButton(
+                text = "Save Reminder",
+                enabled = !isSubmitting && reminderTitle.isNotBlank() && reminderDate.isNotBlank(),
+                isLoading = isSubmitting,
                 onClick = {
                     if (reminderTitle.isNotBlank() && reminderDate.isNotBlank()) {
                         isSubmitting = true
@@ -122,23 +181,8 @@ fun AddReminderScreen(
                             }
                         )
                     }
-                },
-                enabled = !isSubmitting && reminderTitle.isNotBlank() && reminderDate.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(
-                        text = "Save Reminder",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
-            }
+            )
         }
     }
 }

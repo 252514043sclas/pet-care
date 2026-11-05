@@ -3,16 +3,25 @@ package com.kavya.petcare
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.MonitorWeight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 
 class WeightTrackerActivity : ComponentActivity() {
@@ -45,136 +54,184 @@ fun WeightTrackerScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Weight Tracker") })
-        }
+            PetModernTopBar(
+                title = "Weight Tracker",
+                subtitle = "Weight trends & milestones",
+                onBack = onBack
+            )
+        },
+        containerColor = SoftBackground
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+                .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "${activePet.name}'s Weight History",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Card(
+            // Hero Current Weight Card
+            PetModernCard(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
-                shape = MaterialTheme.shapes.large
+                containerColor = WarmPearl
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = "Current Weight",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = activePet.weight,
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Target Weight: $targetWeight kg • Status: Optimal",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "${activePet.name}'s Weight",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Target: $targetWeight kg",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                        PetBadge(
+                            text = "Optimal Range",
+                            containerColor = MintSoft,
+                            contentColor = EmeraldPrimary
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.Bottom) {
+                            Text(
+                                text = activePet.weight.replace(" kg", ""),
+                                fontSize = 40.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = EmeraldPrimary
+                            )
+                            Text(
+                                text = " kg",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextSecondary,
+                                modifier = Modifier.padding(bottom = 6.dp, start = 4.dp)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(MintSoft),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MonitorWeight,
+                                contentDescription = null,
+                                tint = EmeraldPrimary,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Add New Weight Entry",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+            PetSectionHeader(title = "Log New Weight")
 
-            OutlinedTextField(
-                value = weightInput,
-                onValueChange = { weightInput = it },
-                label = { Text("Weight in kg (e.g. 1.85)") },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
-                    unfocusedTextColor = androidx.compose.ui.graphics.Color(0xFF111816),
-                    focusedLabelColor = androidx.compose.ui.graphics.Color(0xFF184D43),
-                    unfocusedLabelColor = androidx.compose.ui.graphics.Color(0xFF2C3E37)
-                ),
+            PetModernCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium,
-                singleLine = true
-            )
-
-            Button(
-                onClick = {
-                    val weightFloat = weightInput.toFloatOrNull()
-                    if (weightFloat != null && weightFloat > 0f) {
-                        isSubmitting = true
-                        val todayDate = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault()).format(java.util.Date())
-                        viewModel.addWeightEntry(todayDate, weightFloat) {
-                            isSubmitting = false
-                            onBack()
-                        }
-                    }
-                },
-                enabled = !isSubmitting && weightInput.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = MaterialTheme.shapes.medium
+                containerColor = WarmPearl
             ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text(
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    PetTextField(
+                        value = weightInput,
+                        onValueChange = { weightInput = it },
+                        label = "Weight in kg",
+                        placeholder = "e.g., 2.15",
+                        leadingIcon = Icons.AutoMirrored.Filled.TrendingUp
+                    )
+
+                    PetGradientButton(
                         text = "Record Weight",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
+                        enabled = weightInput.isNotBlank() && !isSubmitting,
+                        isLoading = isSubmitting,
+                        onClick = {
+                            val weightFloat = weightInput.toFloatOrNull()
+                            if (weightFloat != null && weightFloat > 0f) {
+                                isSubmitting = true
+                                val todayDate = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault()).format(java.util.Date())
+                                viewModel.addWeightEntry(todayDate, weightFloat) {
+                                    isSubmitting = false
+                                    onBack()
+                                }
+                            }
+                        }
                     )
                 }
             }
 
             if (weightHistory.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "Recent Logs",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                weightHistory.takeLast(4).reversed().forEach { entry ->
-                    Card(
+                PetSectionHeader(title = "Recent History")
+
+                weightHistory.takeLast(5).reversed().forEach { entry ->
+                    PetModernCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.small
+                        containerColor = WarmPearl
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .padding(horizontal = 18.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(entry.date, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${entry.weightKg} kg", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(SoftBackground),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                        contentDescription = null,
+                                        tint = MintSage,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                Text(
+                                    text = entry.date,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextPrimary
+                                )
+                            }
+                            PetBadge(
+                                text = "${entry.weightKg} kg",
+                                containerColor = MintSoft,
+                                contentColor = EmeraldPrimary
+                            )
                         }
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text("Back")
             }
         }
     }

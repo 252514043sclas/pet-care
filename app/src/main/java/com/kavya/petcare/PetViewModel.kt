@@ -271,13 +271,45 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     // ----------------------------------------------------
     // Pet Operations
     // ----------------------------------------------------
-    fun createPetProfile(name: String, breed: String, age: String, weight: String, type: String, onComplete: () -> Unit) {
+    fun createPetProfile(
+        name: String,
+        breed: String,
+        age: String,
+        weight: String,
+        type: String,
+        onComplete: () -> Unit
+    ) {
+        createPetProfile(name, breed, age, weight, type, null, null, onComplete)
+    }
+
+    fun createPetProfile(
+        name: String,
+        breed: String,
+        age: String,
+        weight: String,
+        type: String,
+        imageBase64: String?,
+        bitmap: android.graphics.Bitmap?,
+        onComplete: () -> Unit
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             val weightKg = weight.toDoubleOrNull() ?: 1.8
-            val result = repository.createPet(name, type, breed, age, weightKg)
+            val result = repository.createPet(
+                name = name,
+                species = type,
+                breed = breed,
+                ageYears = age,
+                weightKg = weightKg,
+                imageBase64 = imageBase64
+            )
             _isLoading.value = false
             result.onSuccess { pet ->
+                if (bitmap != null && !pet.imageUrl.isNullOrBlank()) {
+                    com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), pet.imageUrl, bitmap)
+                    val full = com.kavya.petcare.ui.components.PetImageLoader.resolveFullUrl(getApplication(), pet.imageUrl)
+                    com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), full, bitmap)
+                }
                 val profile = PetProfile(
                     id = pet.id.toString(),
                     name = pet.name,
@@ -306,6 +338,7 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                     vaccinationStatus = pet.vaccinationStatus
                 )
                 refreshDashboard()
+                loadAllPets()
                 onComplete()
             }.onFailure {
                 // Keep local state update for seamless UX even if offline
@@ -371,6 +404,12 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             healthScore = p.healthScore,
             vaccinationStatus = p.vaccinationStatus
         )
+        // Permanently persist active pet selection to MySQL
+        viewModelScope.launch {
+            repository.updatePetDetails(p.id, UpdatePetRequest(isActive = 1))
+            refreshDashboard()
+            loadAllPets()
+        }
     }
 
     fun editPetProfile(
@@ -430,12 +469,27 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun uploadPetPhoto(petId: Int, base64: String, onDone: (Boolean, String) -> Unit) {
+        uploadPetPhoto(petId, base64, null, onDone)
+    }
+
+    fun uploadPetPhoto(petId: Int, base64: String, bitmap: android.graphics.Bitmap?, onDone: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
+            if (bitmap != null) {
+                com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), base64, bitmap)
+            }
             val result = repository.uploadPetPhoto(petId, base64)
             _isLoading.value = false
             result.onSuccess { data ->
-                _activePet.value = _activePet.value.copy(imageUrl = data.imageUrl)
+                if (bitmap != null) {
+                    com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), data.imageUrl, bitmap)
+                    val fullUrl = com.kavya.petcare.ui.components.PetImageLoader.resolveFullUrl(getApplication(), data.imageUrl)
+                    com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), fullUrl, bitmap)
+                }
+                if (_activePet.value.id == petId.toString()) {
+                    _activePet.value = _activePet.value.copy(imageUrl = data.imageUrl)
+                    session.setActivePetImageUrl(data.imageUrl)
+                }
                 refreshDashboard()
                 loadAllPets()
                 onDone(true, "Pet photo updated successfully")
@@ -464,6 +518,11 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _isLoading.value = true
             repository.logout()
+            com.kavya.petcare.ui.components.PetImageLoader.clearMemoryCache()
+            _activePet.value = PetProfile()
+            _userAvatarUrl.value = null
+            _allPets.value = emptyList()
+            resetShared()
             _isLoading.value = false
             onComplete()
         }
@@ -483,12 +542,25 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun uploadUserAvatar(base64: String, onDone: (Boolean, String) -> Unit) {
+        uploadUserAvatar(base64, null, onDone)
+    }
+
+    fun uploadUserAvatar(base64: String, bitmap: android.graphics.Bitmap?, onDone: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             _isLoading.value = true
+            if (bitmap != null) {
+                com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), base64, bitmap)
+            }
             val result = repository.uploadUserAvatar(base64)
             _isLoading.value = false
             result.onSuccess { avatarUrl ->
+                if (bitmap != null && avatarUrl.isNotBlank()) {
+                    com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), avatarUrl, bitmap)
+                    val fullUrl = com.kavya.petcare.ui.components.PetImageLoader.resolveFullUrl(getApplication(), avatarUrl)
+                    com.kavya.petcare.ui.components.PetImageLoader.cacheBitmap(getApplication(), fullUrl, bitmap)
+                }
                 _userAvatarUrl.value = avatarUrl
+                session.setUserAvatarUrl(avatarUrl)
                 refreshDashboard()
                 onDone(true, "Avatar updated successfully")
             }.onFailure { err ->
@@ -712,6 +784,10 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                     sharedViewModel = it
                 }
             }
+        }
+
+        fun resetShared() {
+            sharedViewModel = null
         }
     }
 }
