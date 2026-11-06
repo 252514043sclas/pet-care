@@ -219,30 +219,30 @@ fun getPetDrawableRes(species: String?): Int {
                 clean.contains("husky") || clean.contains("poodle") || clean.contains("bulldog") ||
                 clean.contains("terrier") || clean.contains("corgi") || clean.contains("labrador") ||
                 clean.contains("chihuahua") || clean.contains("beagle") || clean.contains("boxer") ||
-                clean.contains("rottweiler") -> R.drawable.ic_pet_dog
+                clean.contains("rottweiler") -> R.drawable.img_pet_dog
 
         clean.contains("cat") || clean.contains("kitten") || clean.contains("kitty") ||
                 clean.contains("feline") || clean.contains("persian") || clean.contains("siamese") ||
                 clean.contains("shorthair") || clean.contains("meow") || clean.contains("bengal") ||
-                clean.contains("ragdoll") -> R.drawable.ic_pet_cat
+                clean.contains("ragdoll") -> R.drawable.img_pet_cat
 
         clean.contains("rabbit") || clean.contains("bunny") || clean.contains("lop") ||
-                clean.contains("hare") || clean.contains("cottontail") -> R.drawable.ic_pet_rabbit
+                clean.contains("hare") || clean.contains("cottontail") -> R.drawable.img_pet_rabbit
 
         clean.contains("bird") || clean.contains("parrot") || clean.contains("canary") ||
                 clean.contains("finch") || clean.contains("cockatiel") || clean.contains("parakeet") ||
                 clean.contains("avian") || clean.contains("budgie") || clean.contains("cockatoo") ||
-                clean.contains("lovebird") -> R.drawable.ic_pet_bird
+                clean.contains("lovebird") -> R.drawable.img_pet_bird
 
         clean.contains("hamster") || clean.contains("guinea") || clean.contains("cavy") ||
                 clean.contains("gerbil") || clean.contains("mouse") || clean.contains("rat") ||
-                clean.contains("rodent") || clean.contains("chinchilla") -> R.drawable.ic_pet_hamster
+                clean.contains("rodent") || clean.contains("chinchilla") -> R.drawable.img_pet_hamster
 
         clean.contains("fish") || clean.contains("goldfish") || clean.contains("betta") ||
                 clean.contains("aquarium") || clean.contains("guppy") || clean.contains("tetra") ||
                 clean.contains("aquatic") || clean.contains("koi") || clean.contains("cichlid") -> R.drawable.ic_pet_fish
 
-        else -> R.drawable.ic_pet_default
+        else -> R.drawable.img_pet_other
     }
 }
 
@@ -310,8 +310,8 @@ fun PetAvatar(
                 Image(
                     painter = painterResource(id = drawableRes),
                     contentDescription = petName ?: "Pet Icon",
-                    modifier = Modifier.fillMaxSize(iconSizeRatio),
-                    contentScale = ContentScale.Fit
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
         }

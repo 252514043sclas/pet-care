@@ -102,7 +102,30 @@ interface PetCareApiService {
     suspend fun getDietSummary(): Response<ApiResponse<DietSummaryDto>>
 
     @GET("diet/schedule")
-    suspend fun getMealSchedule(): Response<ApiResponse<List<MealScheduleDto>>>
+    suspend fun getMealSchedule(
+        @Query("pet_id") petId: Int? = null
+    ): Response<ApiResponse<List<MealScheduleDto>>>
+
+    @POST("diet/schedule")
+    suspend fun createMealSchedule(
+        @Body request: CreateMealScheduleRequest
+    ): Response<ApiResponse<MealScheduleDto>>
+
+    @PUT("diet/schedule/{id}")
+    suspend fun updateMealSchedule(
+        @Path("id") id: Int,
+        @Body request: UpdateMealScheduleRequest
+    ): Response<ApiResponse<MealScheduleDto>>
+
+    @DELETE("diet/schedule/{id}")
+    suspend fun deleteMealSchedule(
+        @Path("id") id: Int
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @POST("diet/schedule/{id}/toggle-reminder")
+    suspend fun toggleMealReminder(
+        @Path("id") id: Int
+    ): Response<ApiResponse<MealScheduleDto>>
 
     @GET("diet/meals")
     suspend fun getLoggedMeals(): Response<ApiResponse<List<MealEntryDto>>>

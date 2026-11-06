@@ -129,11 +129,16 @@ CREATE TABLE `meal_entries` (
 CREATE TABLE `meal_schedules` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `pet_id` INT UNSIGNED NOT NULL,
-    `meal_name` VARCHAR(100) NOT NULL, -- Morning, Afternoon, Evening
-    `scheduled_time` VARCHAR(50) NOT NULL, -- "Morning • 8:00 AM"
-    `meal_description` VARCHAR(255) NOT NULL,
+    `meal_name` VARCHAR(100) NOT NULL, -- Breakfast, Lunch, Evening Snacks, Dinner
+    `scheduled_time` VARCHAR(50) NOT NULL, -- "8:00 AM"
+    `food_name` VARCHAR(150) NULL, -- "Premium Kibble"
+    `food_quantity` VARCHAR(100) NULL, -- "2 Cups"
+    `meal_description` VARCHAR(255) NOT NULL, -- Combined description or notes
+    `instructions` TEXT NULL, -- Feeding instructions / advice
     `calories` INT NOT NULL DEFAULT 350,
+    `is_reminder_enabled` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`pet_id`) REFERENCES `pets`(`id`) ON DELETE CASCADE,
     INDEX `idx_meal_schedule_pet` (`pet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

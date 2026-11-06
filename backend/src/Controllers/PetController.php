@@ -101,18 +101,20 @@ class PetController {
             // Optional initial weight record
         }
 
-        // Add default feeding schedule for new pet
+        // Add default feeding schedule for new pet (Breakfast, Lunch, Evening Snacks, Dinner)
         try {
             $schedStmt = $pdo->prepare(
-                'INSERT INTO meal_schedules (pet_id, meal_name, scheduled_time, meal_description, calories, created_at) VALUES
-                 (:p1, "Morning", "Morning • 8:00 AM", "2 Cups Premium Kibble / Fresh Timothy Hay", 350, NOW()),
-                 (:p2, "Afternoon", "Afternoon • 1:00 PM", "Healthy Snack & Fresh Treat", 100, NOW()),
-                 (:p3, "Evening", "Evening • 6:00 PM", "Evening Portion with Greens", 350, NOW())'
+                'INSERT INTO meal_schedules (pet_id, meal_name, scheduled_time, food_name, food_quantity, meal_description, instructions, calories, is_reminder_enabled, created_at) VALUES
+                 (:p1, "Breakfast", "8:00 AM", "Premium Kibble & Fresh Hay", "2 Cups", "Serve with fresh, clean water at room temperature", "Serve with fresh, clean water at room temperature", 350, 1, NOW()),
+                 (:p2, "Lunch", "1:00 PM", "Healthy Carrot Snacks & Treats", "1 Portion", "Crunchy raw baby carrots aid dental health", "Crunchy raw baby carrots aid dental health", 100, 1, NOW()),
+                 (:p3, "Evening Snacks", "4:30 PM", "Nutrition Bites & Fresh Greens", "0.5 Cup", "Light afternoon refreshment to keep energy steady", "Light afternoon refreshment to keep energy steady", 100, 1, NOW()),
+                 (:p4, "Dinner", "7:00 PM", "Kibble + Warm Broth / Wet Portion", "2 Cups", "Low-sodium broth promotes hydration and appetite", "Low-sodium broth promotes hydration and appetite", 350, 1, NOW())'
             );
             $schedStmt->execute([
                 ':p1' => $petId,
                 ':p2' => $petId,
                 ':p3' => $petId,
+                ':p4' => $petId,
             ]);
         } catch (\Throwable $e) {
             // Optional initial schedule

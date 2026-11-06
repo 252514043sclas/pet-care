@@ -114,10 +114,38 @@ data class DietSummaryDto(
 
 data class MealScheduleDto(
     @SerializedName("id") val id: Int,
+    @SerializedName("pet_id") val petId: Int = 0,
     @SerializedName("meal_name") val mealName: String,
     @SerializedName("scheduled_time") val scheduledTime: String,
-    @SerializedName("meal_description") val mealDescription: String,
-    @SerializedName("calories") val calories: Int
+    @SerializedName("food_name") val foodName: String = "",
+    @SerializedName("food_quantity") val foodQuantity: String = "",
+    @SerializedName("meal_description") val mealDescription: String = "",
+    @SerializedName("instructions") val instructions: String = "",
+    @SerializedName("calories") val calories: Int = 250,
+    @SerializedName("is_reminder_enabled") val isReminderEnabled: Int = 1
+)
+
+data class CreateMealScheduleRequest(
+    @SerializedName("pet_id") val petId: Int? = null,
+    @SerializedName("meal_name") val mealName: String,
+    @SerializedName("scheduled_time") val scheduledTime: String,
+    @SerializedName("food_name") val foodName: String? = null,
+    @SerializedName("food_quantity") val foodQuantity: String? = null,
+    @SerializedName("meal_description") val mealDescription: String? = null,
+    @SerializedName("instructions") val instructions: String? = null,
+    @SerializedName("calories") val calories: Int = 250,
+    @SerializedName("is_reminder_enabled") val isReminderEnabled: Int = 1
+)
+
+data class UpdateMealScheduleRequest(
+    @SerializedName("meal_name") val mealName: String? = null,
+    @SerializedName("scheduled_time") val scheduledTime: String? = null,
+    @SerializedName("food_name") val foodName: String? = null,
+    @SerializedName("food_quantity") val foodQuantity: String? = null,
+    @SerializedName("meal_description") val mealDescription: String? = null,
+    @SerializedName("instructions") val instructions: String? = null,
+    @SerializedName("calories") val calories: Int? = null,
+    @SerializedName("is_reminder_enabled") val isReminderEnabled: Int? = null
 )
 
 data class MealEntryDto(

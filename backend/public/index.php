@@ -187,11 +187,27 @@ try {
 
     // Diet & Nutrition
     if ($requestMethod === 'GET' && $uri === '/api/diet/summary') {
-        (new DietController())->summary($user);
+        (new DietController())->summary($user, $input);
     }
 
     if ($requestMethod === 'GET' && $uri === '/api/diet/schedule') {
-        (new DietController())->schedule($user);
+        (new DietController())->schedule($user, $input);
+    }
+
+    if ($requestMethod === 'POST' && $uri === '/api/diet/schedule') {
+        (new DietController())->createSchedule($user, $input);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST') && preg_match('#^/api/diet/schedule/(\d+)/toggle-reminder$#', $uri, $matches)) {
+        (new DietController())->toggleReminder($user, (int)$matches[1]);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST' || $requestMethod === 'PATCH') && preg_match('#^/api/diet/schedule/(\d+)$#', $uri, $matches)) {
+        (new DietController())->updateSchedule($user, (int)$matches[1], $input);
+    }
+
+    if ($requestMethod === 'DELETE' && preg_match('#^/api/diet/schedule/(\d+)$#', $uri, $matches)) {
+        (new DietController())->deleteSchedule($user, (int)$matches[1]);
     }
 
     if ($requestMethod === 'GET' && $uri === '/api/diet/meals') {

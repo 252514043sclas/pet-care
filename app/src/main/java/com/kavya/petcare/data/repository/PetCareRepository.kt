@@ -350,13 +350,65 @@ class PetCareRepository(private val context: Context) {
         }
     }
 
-    suspend fun getMealSchedule(): Result<List<MealScheduleDto>> = withContext(Dispatchers.IO) {
+    suspend fun getMealSchedule(petId: Int? = null): Result<List<MealScheduleDto>> = withContext(Dispatchers.IO) {
         try {
-            val response = api.getMealSchedule()
+            val response = api.getMealSchedule(petId)
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(response.body()!!.data ?: emptyList())
             } else {
                 Result.failure(Exception(response.body()?.message ?: "Failed to load meal schedule"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun createMealSchedule(request: CreateMealScheduleRequest): Result<MealScheduleDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.createMealSchedule(request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                Result.failure(Exception(response.body()?.message ?: "Failed to create meal schedule"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updateMealSchedule(id: Int, request: UpdateMealScheduleRequest): Result<MealScheduleDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updateMealSchedule(id, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                Result.failure(Exception(response.body()?.message ?: "Failed to update meal schedule"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deleteMealSchedule(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteMealSchedule(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to delete meal schedule"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun toggleMealReminder(id: Int): Result<MealScheduleDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.toggleMealReminder(id)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                Result.failure(Exception("Failed to toggle meal reminder"))
             }
         } catch (e: Exception) {
             Result.failure(Exception(formatNetworkError(e)))

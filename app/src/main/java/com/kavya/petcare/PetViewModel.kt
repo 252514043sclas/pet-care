@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.kavya.petcare.data.models.*
 import com.kavya.petcare.data.repository.PetCareRepository
 import com.kavya.petcare.data.session.SessionManager
+import com.kavya.petcare.notifications.FeedingScheduleStore
+import com.kavya.petcare.notifications.MealNotificationScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -112,6 +114,14 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     )
     val meals: StateFlow<List<MealEntry>> = _meals.asStateFlow()
 
+    // Feeding Schedule / Meal Schedules StateFlow
+    private val _mealSchedules = MutableStateFlow<List<MealScheduleDto>>(emptyList())
+    val mealSchedules: StateFlow<List<MealScheduleDto>> = _mealSchedules.asStateFlow()
+
+    // Diet Summary StateFlow
+    private val _dietSummary = MutableStateFlow<DietSummaryDto?>(null)
+    val dietSummary: StateFlow<DietSummaryDto?> = _dietSummary.asStateFlow()
+
     // Weight History StateFlow
     private val _weightHistory = MutableStateFlow<List<WeightEntry>>(
         listOf(
@@ -161,6 +171,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         loadCalendarTasks()
         loadSymptoms()
         loadConditionDetail(1)
+        loadMealSchedules()
+        loadDietSummary()
     }
 
     // ----------------------------------------------------
@@ -660,8 +672,179 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ----------------------------------------------------
-    // Meal Operations
+    // Meal Operations & Feeding Schedules
     // ----------------------------------------------------
+    fun loadMealSchedules(petId: Int? = null) {
+        val targetPetId = petId ?: _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        val petName = _activePet.value.name
+
+        // Instant local cache load
+        val cached = FeedingScheduleStore.getSchedules(getApplication(), targetPetId)
+        if (cached.isNotEmpty()) {
+            _mealSchedules.value = cached
+        }
+
+        viewModelScope.launch {
+            repository.getMealSchedule(targetPetId).onSuccess { list ->
+                _mealSchedules.value = list
+                FeedingScheduleStore.saveSchedules(getApplication(), targetPetId, list, petName)
+                MealNotificationScheduler.rescheduleAllForPet(getApplication(), targetPetId, petName, list)
+            }
+            loadDietSummary()
+        }
+    }
+
+    fun loadDietSummary() {
+        viewModelScope.launch {
+            repository.getDietSummary().onSuccess { summary ->
+                _dietSummary.value = summary
+            }
+        }
+    }
+
+    fun createMealSchedule(
+        mealName: String,
+        scheduledTime: String,
+        foodName: String?,
+        foodQuantity: String?,
+        instructions: String?,
+        calories: Int,
+        isReminderEnabled: Int = 1,
+        onSuccess: (() -> Unit)? = null,
+        onError: ((String) -> Unit)? = null
+    ) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        val petName = _activePet.value.name
+        viewModelScope.launch {
+            _isLoading.value = true
+            val request = CreateMealScheduleRequest(
+                petId = targetPetId,
+                mealName = mealName,
+                scheduledTime = scheduledTime,
+                foodName = foodName,
+                foodQuantity = foodQuantity,
+                mealDescription = foodName,
+                instructions = instructions,
+                calories = calories,
+                isReminderEnabled = isReminderEnabled
+            )
+            val result = repository.createMealSchedule(request)
+            _isLoading.value = false
+            result.onSuccess { created ->
+                val updatedList = _mealSchedules.value + created
+                _mealSchedules.value = updatedList
+                FeedingScheduleStore.updateScheduleInCache(getApplication(), targetPetId, created)
+                if (created.isReminderEnabled == 1) {
+                    MealNotificationScheduler.scheduleMealReminder(getApplication(), created, petName, targetPetId)
+                }
+                loadDietSummary()
+                onSuccess?.invoke()
+            }.onFailure { err ->
+                onError?.invoke(err.message ?: "Failed to add meal schedule")
+            }
+        }
+    }
+
+    fun updateMealSchedule(
+        id: Int,
+        mealName: String?,
+        scheduledTime: String?,
+        foodName: String?,
+        foodQuantity: String?,
+        instructions: String?,
+        calories: Int?,
+        isReminderEnabled: Int?,
+        onSuccess: (() -> Unit)? = null,
+        onError: ((String) -> Unit)? = null
+    ) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        val petName = _activePet.value.name
+        viewModelScope.launch {
+            _isLoading.value = true
+            val request = UpdateMealScheduleRequest(
+                mealName = mealName,
+                scheduledTime = scheduledTime,
+                foodName = foodName,
+                foodQuantity = foodQuantity,
+                mealDescription = foodName,
+                instructions = instructions,
+                calories = calories,
+                isReminderEnabled = isReminderEnabled
+            )
+            val result = repository.updateMealSchedule(id, request)
+            _isLoading.value = false
+            result.onSuccess { updated ->
+                val updatedList = _mealSchedules.value.map { if (it.id == id) updated else it }
+                _mealSchedules.value = updatedList
+                FeedingScheduleStore.updateScheduleInCache(getApplication(), targetPetId, updated)
+                if (updated.isReminderEnabled == 1) {
+                    MealNotificationScheduler.scheduleMealReminder(getApplication(), updated, petName, targetPetId)
+                } else {
+                    MealNotificationScheduler.cancelMealReminder(getApplication(), targetPetId, updated.id)
+                }
+                loadDietSummary()
+                onSuccess?.invoke()
+            }.onFailure { err ->
+                onError?.invoke(err.message ?: "Failed to update meal schedule")
+            }
+        }
+    }
+
+    fun deleteMealSchedule(id: Int, onSuccess: (() -> Unit)? = null, onError: ((String) -> Unit)? = null) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        viewModelScope.launch {
+            _isLoading.value = true
+            val result = repository.deleteMealSchedule(id)
+            _isLoading.value = false
+            result.onSuccess {
+                _mealSchedules.value = _mealSchedules.value.filter { it.id != id }
+                FeedingScheduleStore.deleteScheduleFromCache(getApplication(), targetPetId, id)
+                MealNotificationScheduler.cancelMealReminder(getApplication(), targetPetId, id)
+                loadDietSummary()
+                onSuccess?.invoke()
+            }.onFailure { err ->
+                onError?.invoke(err.message ?: "Failed to delete meal schedule")
+            }
+        }
+    }
+
+    fun toggleMealReminder(id: Int, onDone: ((Boolean) -> Unit)? = null) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        val petName = _activePet.value.name
+        val current = _mealSchedules.value.find { it.id == id } ?: return
+        val newStatus = if (current.isReminderEnabled == 1) 0 else 1
+
+        // Optimistic UI update
+        val optimistic = current.copy(isReminderEnabled = newStatus)
+        _mealSchedules.value = _mealSchedules.value.map { if (it.id == id) optimistic else it }
+        FeedingScheduleStore.updateScheduleInCache(getApplication(), targetPetId, optimistic)
+
+        if (newStatus == 1) {
+            MealNotificationScheduler.scheduleMealReminder(getApplication(), optimistic, petName, targetPetId)
+        } else {
+            MealNotificationScheduler.cancelMealReminder(getApplication(), targetPetId, id)
+        }
+
+        viewModelScope.launch {
+            val result = repository.toggleMealReminder(id)
+            result.onSuccess { updated ->
+                _mealSchedules.value = _mealSchedules.value.map { if (it.id == id) updated else it }
+                FeedingScheduleStore.updateScheduleInCache(getApplication(), targetPetId, updated)
+                onDone?.invoke(true)
+            }.onFailure {
+                // Revert on failure
+                _mealSchedules.value = _mealSchedules.value.map { if (it.id == id) current else it }
+                FeedingScheduleStore.updateScheduleInCache(getApplication(), targetPetId, current)
+                if (current.isReminderEnabled == 1) {
+                    MealNotificationScheduler.scheduleMealReminder(getApplication(), current, petName, targetPetId)
+                } else {
+                    MealNotificationScheduler.cancelMealReminder(getApplication(), targetPetId, id)
+                }
+                onDone?.invoke(false)
+            }
+        }
+    }
+
     fun addMeal(mealName: String, calories: Int, time: String, onDone: (() -> Unit)? = null) {
         viewModelScope.launch {
             val newMeal = MealEntry(
