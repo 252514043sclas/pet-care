@@ -121,7 +121,7 @@ data class MealScheduleDto(
     @SerializedName("food_quantity") val foodQuantity: String = "",
     @SerializedName("meal_description") val mealDescription: String = "",
     @SerializedName("instructions") val instructions: String = "",
-    @SerializedName("calories") val calories: Int = 250,
+    @SerializedName("calories") val calories: Int = 0,
     @SerializedName("is_reminder_enabled") val isReminderEnabled: Int = 1
 )
 
@@ -133,7 +133,7 @@ data class CreateMealScheduleRequest(
     @SerializedName("food_quantity") val foodQuantity: String? = null,
     @SerializedName("meal_description") val mealDescription: String? = null,
     @SerializedName("instructions") val instructions: String? = null,
-    @SerializedName("calories") val calories: Int = 250,
+    @SerializedName("calories") val calories: Int = 0,
     @SerializedName("is_reminder_enabled") val isReminderEnabled: Int = 1
 )
 

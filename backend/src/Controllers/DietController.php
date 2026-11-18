@@ -35,67 +35,6 @@ class DietController {
         return $this->getActivePetId($pdo, (int)$currentUser['id']);
     }
 
-    private function seedDefaultSchedule(PDO $pdo, int $petId): void {
-        $defaults = [
-            [
-                'meal_name' => 'Breakfast',
-                'scheduled_time' => '8:00 AM',
-                'food_name' => 'Premium Kibble & Fresh Hay',
-                'food_quantity' => '2 Cups',
-                'meal_description' => 'Serve with fresh, clean water at room temperature',
-                'instructions' => 'Serve with fresh, clean water at room temperature',
-                'calories' => 350,
-                'is_reminder_enabled' => 1
-            ],
-            [
-                'meal_name' => 'Lunch',
-                'scheduled_time' => '1:00 PM',
-                'food_name' => 'Healthy Carrot Snacks & Treats',
-                'food_quantity' => '1 Portion',
-                'meal_description' => 'Crunchy raw baby carrots aid dental health',
-                'instructions' => 'Crunchy raw baby carrots aid dental health',
-                'calories' => 100,
-                'is_reminder_enabled' => 1
-            ],
-            [
-                'meal_name' => 'Evening Snacks',
-                'scheduled_time' => '4:30 PM',
-                'food_name' => 'Nutrition Bites & Fresh Greens',
-                'food_quantity' => '0.5 Cup',
-                'meal_description' => 'Light afternoon refreshment to keep energy steady',
-                'instructions' => 'Light afternoon refreshment to keep energy steady',
-                'calories' => 100,
-                'is_reminder_enabled' => 1
-            ],
-            [
-                'meal_name' => 'Dinner',
-                'scheduled_time' => '7:00 PM',
-                'food_name' => 'Kibble + Warm Broth / Wet Portion',
-                'food_quantity' => '2 Cups',
-                'meal_description' => 'Low-sodium broth promotes hydration and appetite',
-                'instructions' => 'Low-sodium broth promotes hydration and appetite',
-                'calories' => 350,
-                'is_reminder_enabled' => 1
-            ]
-        ];
-
-        foreach ($defaults as $m) {
-            $ins = $pdo->prepare('INSERT INTO meal_schedules (pet_id, meal_name, scheduled_time, food_name, food_quantity, meal_description, instructions, calories, is_reminder_enabled, created_at)
-                VALUES (:pet_id, :meal_name, :scheduled_time, :food_name, :food_quantity, :meal_description, :instructions, :calories, :is_reminder_enabled, NOW())');
-            $ins->execute([
-                ':pet_id' => $petId,
-                ':meal_name' => $m['meal_name'],
-                ':scheduled_time' => $m['scheduled_time'],
-                ':food_name' => $m['food_name'],
-                ':food_quantity' => $m['food_quantity'],
-                ':meal_description' => $m['meal_description'],
-                ':instructions' => $m['instructions'],
-                ':calories' => $m['calories'],
-                ':is_reminder_enabled' => $m['is_reminder_enabled']
-            ]);
-        }
-    }
-
     public function summary(array $currentUser, array $input = []): void {
         $pdo = Database::getConnection();
         $petId = $this->resolvePetId($pdo, $currentUser, $input);
@@ -138,12 +77,6 @@ class DietController {
             $stmt = $pdo->prepare("SELECT * FROM meal_schedules WHERE pet_id = :pet_id ORDER BY FIELD(meal_name, 'Breakfast', 'Lunch', 'Evening Snacks', 'Dinner'), id ASC");
             $stmt->execute([':pet_id' => $petId]);
             $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            if (empty($schedules)) {
-                $this->seedDefaultSchedule($pdo, $petId);
-                $stmt->execute([':pet_id' => $petId]);
-                $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            }
         }
 
         $formatted = array_map(function ($row) {
@@ -152,10 +85,10 @@ class DietController {
                 'pet_id' => (int)$row['pet_id'],
                 'meal_name' => $row['meal_name'],
                 'scheduled_time' => $row['scheduled_time'],
-                'food_name' => !empty($row['food_name']) ? $row['food_name'] : ($row['meal_description'] ?? 'Pet Food'),
-                'food_quantity' => !empty($row['food_quantity']) ? $row['food_quantity'] : '1 Portion',
-                'meal_description' => $row['meal_description'] ?? '',
-                'instructions' => !empty($row['instructions']) ? $row['instructions'] : ($row['meal_description'] ?? ''),
+                'food_name' => (string)($row['food_name'] ?? ''),
+                'food_quantity' => (string)($row['food_quantity'] ?? ''),
+                'meal_description' => (string)($row['meal_description'] ?? ''),
+                'instructions' => (string)($row['instructions'] ?? ''),
                 'calories' => (int)$row['calories'],
                 'is_reminder_enabled' => (int)($row['is_reminder_enabled'] ?? 1),
                 'created_at' => $row['created_at'] ?? '',
@@ -182,13 +115,13 @@ class DietController {
             Response::error('No pet profile found.', 400);
         }
 
-        $mealName = trim($input['meal_name']);
-        $scheduledTime = trim($input['scheduled_time']);
-        $foodName = !empty($input['food_name']) ? trim($input['food_name']) : $mealName;
-        $foodQuantity = !empty($input['food_quantity']) ? trim($input['food_quantity']) : '1 Portion';
-        $instructions = !empty($input['instructions']) ? trim($input['instructions']) : ($input['meal_description'] ?? '');
-        $description = !empty($input['meal_description']) ? trim($input['meal_description']) : $instructions;
-        $calories = isset($input['calories']) ? (int)$input['calories'] : 250;
+        $mealName = trim((string)$input['meal_name']);
+        $scheduledTime = trim((string)$input['scheduled_time']);
+        $foodName = isset($input['food_name']) ? trim((string)$input['food_name']) : '';
+        $foodQuantity = isset($input['food_quantity']) ? trim((string)$input['food_quantity']) : '';
+        $instructions = isset($input['instructions']) ? trim((string)$input['instructions']) : '';
+        $description = isset($input['meal_description']) && trim((string)$input['meal_description']) !== '' ? trim((string)$input['meal_description']) : $foodName;
+        $calories = isset($input['calories']) && $input['calories'] !== '' ? (int)$input['calories'] : 0;
         $isReminderEnabled = isset($input['is_reminder_enabled']) ? ((int)$input['is_reminder_enabled'] ? 1 : 0) : 1;
 
         $stmt = $pdo->prepare('INSERT INTO meal_schedules (pet_id, meal_name, scheduled_time, food_name, food_quantity, meal_description, instructions, calories, is_reminder_enabled, created_at)
@@ -210,7 +143,22 @@ class DietController {
         $fetchStmt->execute([':id' => $newId]);
         $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
-        Response::success($row, 'Meal schedule created successfully', 201);
+        $formatted = [
+            'id' => (int)$row['id'],
+            'pet_id' => (int)$row['pet_id'],
+            'meal_name' => $row['meal_name'],
+            'scheduled_time' => $row['scheduled_time'],
+            'food_name' => (string)($row['food_name'] ?? ''),
+            'food_quantity' => (string)($row['food_quantity'] ?? ''),
+            'meal_description' => (string)($row['meal_description'] ?? ''),
+            'instructions' => (string)($row['instructions'] ?? ''),
+            'calories' => (int)$row['calories'],
+            'is_reminder_enabled' => (int)($row['is_reminder_enabled'] ?? 1),
+            'created_at' => $row['created_at'] ?? '',
+            'updated_at' => $row['updated_at'] ?? '',
+        ];
+
+        Response::success($formatted, 'Meal schedule created successfully', 201);
     }
 
     public function updateSchedule(array $currentUser, int $id, array $input): void {
@@ -245,7 +193,22 @@ class DietController {
         $fetchStmt->execute([':id' => $id]);
         $updated = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
-        Response::success($updated, 'Meal schedule updated successfully');
+        $formatted = [
+            'id' => (int)$updated['id'],
+            'pet_id' => (int)$updated['pet_id'],
+            'meal_name' => $updated['meal_name'],
+            'scheduled_time' => $updated['scheduled_time'],
+            'food_name' => (string)($updated['food_name'] ?? ''),
+            'food_quantity' => (string)($updated['food_quantity'] ?? ''),
+            'meal_description' => (string)($updated['meal_description'] ?? ''),
+            'instructions' => (string)($updated['instructions'] ?? ''),
+            'calories' => (int)$updated['calories'],
+            'is_reminder_enabled' => (int)($updated['is_reminder_enabled'] ?? 1),
+            'created_at' => $updated['created_at'] ?? '',
+            'updated_at' => $updated['updated_at'] ?? '',
+        ];
+
+        Response::success($formatted, 'Meal schedule updated successfully');
     }
 
     public function deleteSchedule(array $currentUser, int $id): void {

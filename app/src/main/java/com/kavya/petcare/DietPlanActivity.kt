@@ -16,6 +16,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -36,17 +39,29 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.kavya.petcare.data.models.MealScheduleDto
 import com.kavya.petcare.notifications.MealNotificationScheduler
 import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.theme.PetCareTheme
 import java.util.Calendar
+
+// ============================================================================
+// Dialog Palette — Dark Green, Dark Charcoal, Grey-Green & Clean White
+// ============================================================================
+private val DialogWhite = Color(0xFFFFFFFF)
+private val DialogTitleDarkGreen = Color(0xFF123F32)
+private val InputDarkCharcoal = Color(0xFF1C2925)
+private val LabelGreyGreen = Color(0xFF53645D)
+private val BorderLightGreyGreen = Color(0xFFDFE8E3)
+private val DialogCardBackground = Color(0xFFF7FAF8)
 
 class DietPlanActivity : ComponentActivity() {
 
@@ -383,8 +398,8 @@ fun DietPlanScreen(onBack: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         PetGradientButton(
-                            text = "Load Default Schedules",
-                            onClick = { viewModel.loadMealSchedules() }
+                            text = "Add Feeding Schedule",
+                            onClick = { showAddDialog = true }
                         )
                     }
                 }
@@ -392,7 +407,6 @@ fun DietPlanScreen(onBack: () -> Unit) {
                 sortedSchedules.forEach { schedule ->
                     FeedingMealCard(
                         schedule = schedule,
-                        petName = activePet.name,
                         onToggleReminder = {
                             viewModel.toggleMealReminder(schedule.id) { success ->
                                 if (success) {
@@ -519,7 +533,6 @@ fun DietPlanScreen(onBack: () -> Unit) {
 @Composable
 private fun FeedingMealCard(
     schedule: MealScheduleDto,
-    petName: String,
     onToggleReminder: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -597,11 +610,13 @@ private fun FeedingMealCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    PetBadge(
-                        text = "${schedule.calories} kcal",
-                        containerColor = SoftBackground,
-                        contentColor = EmeraldPrimary
-                    )
+                    if (schedule.calories > 0) {
+                        PetBadge(
+                            text = "${schedule.calories} kcal",
+                            containerColor = SoftBackground,
+                            contentColor = EmeraldPrimary
+                        )
+                    }
 
                     // Reminder Switch
                     Switch(
@@ -629,33 +644,35 @@ private fun FeedingMealCard(
                     append(schedule.foodName.trim())
                 } else if (schedule.mealDescription.isNotBlank()) {
                     append(schedule.mealDescription.trim())
-                } else {
-                    append("Standard Pet Meal")
                 }
-            }
+            }.trim()
 
-            Text(
-                text = foodDisplay,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
-            )
+            if (foodDisplay.isNotBlank()) {
+                Text(
+                    text = foodDisplay,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+            }
 
             // Feeding Instructions / Notes
             val instructions = if (schedule.instructions.isNotBlank()) {
-                schedule.instructions
+                schedule.instructions.trim()
             } else if (schedule.mealDescription.isNotBlank() && schedule.mealDescription != schedule.foodName) {
-                schedule.mealDescription
+                schedule.mealDescription.trim()
             } else {
-                "Serve fresh to $petName with clean, room-temperature drinking water."
+                ""
             }
 
-            Text(
-                text = instructions,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
-                lineHeight = 18.sp
-            )
+            if (instructions.isNotBlank()) {
+                Text(
+                    text = instructions,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    lineHeight = 18.sp
+                )
+            }
 
             // Action row: Reminder status badge + Edit & Delete options
             Row(
@@ -717,7 +734,7 @@ private fun FeedingMealCard(
 }
 
 // ============================================================================
-// Input Field Helper
+// High-Contrast Input Field Helper
 // ============================================================================
 
 @Composable
@@ -725,41 +742,385 @@ private fun DietInputField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    placeholder: String? = null,
+    placeholder: String,
+    modifier: Modifier = Modifier,
     keyboardType: KeyboardType = KeyboardType.Text,
-    singleLine: Boolean = true
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else 5,
+    isError: Boolean = false,
+    errorMessage: String? = null
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text(label) },
-            placeholder = if (placeholder != null) { { Text(placeholder, color = TextMuted) } } else null,
+            label = {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = if (isError) AlertRose else LabelGreyGreen
+                )
+            },
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = LabelGreyGreen.copy(alpha = 0.75f)
+                )
+            },
             singleLine = singleLine,
+            minLines = minLines,
+            maxLines = maxLines,
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = TextPrimary,
+            textStyle = TextStyle(
+                color = InputDarkCharcoal,
+                fontSize = 15.sp,
                 fontWeight = FontWeight.Medium
             ),
             shape = RoundedCornerShape(14.dp),
+            isError = isError,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                focusedBorderColor = MintSage,
-                unfocusedBorderColor = BorderSubtle,
-                focusedLabelColor = EmeraldDark,
-                unfocusedLabelColor = TextSecondary,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White
+                focusedTextColor = InputDarkCharcoal,
+                unfocusedTextColor = InputDarkCharcoal,
+                focusedBorderColor = DialogTitleDarkGreen,
+                unfocusedBorderColor = BorderLightGreyGreen,
+                focusedLabelColor = DialogTitleDarkGreen,
+                unfocusedLabelColor = LabelGreyGreen,
+                focusedPlaceholderColor = LabelGreyGreen.copy(alpha = 0.75f),
+                unfocusedPlaceholderColor = LabelGreyGreen.copy(alpha = 0.75f),
+                focusedContainerColor = DialogWhite,
+                unfocusedContainerColor = DialogWhite,
+                cursorColor = DialogTitleDarkGreen,
+                errorBorderColor = AlertRose,
+                errorLabelColor = AlertRose,
+                errorTextColor = InputDarkCharcoal,
+                errorContainerColor = DialogWhite
             )
         )
+        if (isError && !errorMessage.isNullOrBlank()) {
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.labelSmall,
+                color = AlertRose,
+                modifier = Modifier.padding(start = 6.dp)
+            )
+        }
     }
 }
 
 // ============================================================================
-// Dialogs: Edit Meal & Add Meal
+// Unified Feeding Schedule Form Dialog (Add & Edit)
 // ============================================================================
+
+@Composable
+private fun MealScheduleFormDialog(
+    title: String,
+    initialMealName: String = "",
+    initialScheduledTime: String = "",
+    initialFoodName: String = "",
+    initialFoodQuantity: String = "",
+    initialCaloriesText: String = "",
+    initialInstructions: String = "",
+    initialReminderEnabled: Boolean = true,
+    confirmButtonText: String = "Save Changes",
+    isEditing: Boolean = false,
+    onDismiss: () -> Unit,
+    onSave: (
+        mealName: String,
+        scheduledTime: String,
+        foodName: String,
+        foodQuantity: String,
+        instructions: String,
+        calories: Int,
+        reminderEnabled: Boolean
+    ) -> Unit
+) {
+    val context = LocalContext.current
+
+    var mealName by remember { mutableStateOf(initialMealName) }
+    var scheduledTime by remember { mutableStateOf(initialScheduledTime) }
+    var foodName by remember { mutableStateOf(initialFoodName) }
+    var foodQuantity by remember { mutableStateOf(initialFoodQuantity) }
+    var caloriesText by remember { mutableStateOf(initialCaloriesText) }
+    var instructions by remember { mutableStateOf(initialInstructions) }
+    var reminderEnabled by remember { mutableStateOf(initialReminderEnabled) }
+
+    var mealNameError by remember { mutableStateOf<String?>(null) }
+    var timeError by remember { mutableStateOf<String?>(null) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                )
+                .imePadding()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 500.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { /* prevent click through */ }
+                    ),
+                shape = RoundedCornerShape(24.dp),
+                color = DialogWhite,
+                shadowElevation = 10.dp,
+                border = BorderStroke(1.dp, BorderLightGreyGreen)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(22.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Dialog Header
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = DialogTitleDarkGreen
+                        )
+                        Text(
+                            text = if (isEditing) "Edit feeding schedule details" else "Enter meal information and schedule time",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LabelGreyGreen
+                        )
+                    }
+
+                    // 1. Meal Period Name
+                    DietInputField(
+                        value = mealName,
+                        onValueChange = {
+                            mealName = it
+                            mealNameError = null
+                        },
+                        label = "Meal Period Name",
+                        placeholder = "Enter meal name",
+                        isError = mealNameError != null,
+                        errorMessage = mealNameError
+                    )
+
+                    // 2. Scheduled Feeding Time (Time Picker)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "Scheduled Feeding Time",
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                            color = if (timeError != null) AlertRose else LabelGreyGreen,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                showTimePickerDialog(context, scheduledTime) { selectedTime ->
+                                    scheduledTime = selectedTime
+                                    timeError = null
+                                }
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = DialogWhite,
+                                contentColor = if (scheduledTime.isNotBlank()) InputDarkCharcoal else LabelGreyGreen
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (timeError != null) AlertRose else BorderLightGreyGreen
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (scheduledTime.isNotBlank()) scheduledTime else "Select feeding time",
+                                    style = TextStyle(
+                                        color = if (scheduledTime.isNotBlank()) InputDarkCharcoal else LabelGreyGreen.copy(alpha = 0.75f),
+                                        fontSize = 15.sp,
+                                        fontWeight = if (scheduledTime.isNotBlank()) FontWeight.Medium else FontWeight.Normal
+                                    )
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.AccessTime,
+                                    contentDescription = "Pick Time",
+                                    tint = if (scheduledTime.isNotBlank()) DialogTitleDarkGreen else LabelGreyGreen
+                                )
+                            }
+                        }
+                        if (timeError != null) {
+                            Text(
+                                text = timeError!!,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = AlertRose,
+                                modifier = Modifier.padding(start = 6.dp)
+                            )
+                        }
+                    }
+
+                    // 3. Food Name
+                    DietInputField(
+                        value = foodName,
+                        onValueChange = { foodName = it },
+                        label = "Food Name",
+                        placeholder = "Enter food name"
+                    )
+
+                    // 4. Portion / Quantity
+                    DietInputField(
+                        value = foodQuantity,
+                        onValueChange = { foodQuantity = it },
+                        label = "Portion / Quantity",
+                        placeholder = "Enter portion or quantity"
+                    )
+
+                    // 5. Estimated Calories
+                    DietInputField(
+                        value = caloriesText,
+                        onValueChange = { caloriesText = it.filter { ch -> ch.isDigit() } },
+                        label = "Estimated Calories (kcal)",
+                        placeholder = "Enter calories",
+                        keyboardType = KeyboardType.Number
+                    )
+
+                    // 6. Feeding Notes / Instructions (Comfortable Multiline)
+                    DietInputField(
+                        value = instructions,
+                        onValueChange = { instructions = it },
+                        label = "Feeding Notes / Instructions",
+                        placeholder = "Enter your feeding instructions",
+                        singleLine = false,
+                        minLines = 3,
+                        maxLines = 5
+                    )
+
+                    // 7. Daily Reminder Alert Toggle
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(DialogCardBackground)
+                            .border(1.dp, BorderLightGreyGreen, RoundedCornerShape(14.dp))
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Daily Reminder Alert",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = DialogTitleDarkGreen
+                            )
+                            Text(
+                                text = "Send clock-exact alarm notification",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = LabelGreyGreen
+                            )
+                        }
+                        Switch(
+                            checked = reminderEnabled,
+                            onCheckedChange = { reminderEnabled = it },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = DialogTitleDarkGreen,
+                                uncheckedThumbColor = LabelGreyGreen,
+                                uncheckedTrackColor = BorderLightGreyGreen
+                            )
+                        )
+                    }
+
+                    // Action Buttons (Cancel & Save)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = DialogWhite,
+                                contentColor = DialogTitleDarkGreen
+                            ),
+                            border = BorderStroke(1.5.dp, BorderLightGreyGreen)
+                        ) {
+                            Text(
+                                text = "Cancel",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = DialogTitleDarkGreen
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                var isValid = true
+                                if (mealName.trim().isBlank()) {
+                                    mealNameError = "Please enter a meal name"
+                                    isValid = false
+                                }
+                                if (scheduledTime.trim().isBlank()) {
+                                    timeError = "Please select a feeding time"
+                                    isValid = false
+                                }
+
+                                if (isValid) {
+                                    val caloriesInt = caloriesText.trim().toIntOrNull() ?: 0
+                                    onSave(
+                                        mealName.trim(),
+                                        scheduledTime.trim(),
+                                        foodName.trim(),
+                                        foodQuantity.trim(),
+                                        instructions.trim(),
+                                        caloriesInt,
+                                        reminderEnabled
+                                    )
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DialogTitleDarkGreen,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(
+                                text = confirmButtonText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun MealEditDialog(
@@ -775,188 +1136,20 @@ private fun MealEditDialog(
         reminderEnabled: Boolean
     ) -> Unit
 ) {
-    val context = LocalContext.current
-
-    var mealName by remember { mutableStateOf(schedule.mealName) }
-    var scheduledTime by remember { mutableStateOf(schedule.scheduledTime) }
-    var foodName by remember { mutableStateOf(schedule.foodName.ifBlank { schedule.mealDescription }) }
-    var foodQuantity by remember { mutableStateOf(schedule.foodQuantity) }
-    var caloriesText by remember { mutableStateOf(schedule.calories.toString()) }
-    var instructions by remember { mutableStateOf(schedule.instructions) }
-    var reminderEnabled by remember { mutableStateOf(schedule.isReminderEnabled == 1) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        PetModernCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            containerColor = WarmPearl
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    text = "Edit ${schedule.mealName}",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = EmeraldDark
-                )
-
-                // Meal Name
-                DietInputField(
-                    value = mealName,
-                    onValueChange = { mealName = it },
-                    label = "Meal Period Name",
-                    placeholder = "e.g. Breakfast, Lunch, Dinner"
-                )
-
-                // Scheduled Time with TimePicker Button
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Scheduled Feeding Time",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            showTimePickerDialog(context, scheduledTime) { selectedTime ->
-                                scheduledTime = selectedTime
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                        border = BorderStroke(1.dp, BorderSubtle)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = scheduledTime,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = EmeraldDark
-                            )
-                            Icon(
-                                imageVector = Icons.Default.AccessTime,
-                                contentDescription = "Pick Time",
-                                tint = MintSage
-                            )
-                        }
-                    }
-                }
-
-                // Food Name
-                DietInputField(
-                    value = foodName,
-                    onValueChange = { foodName = it },
-                    label = "Food Name",
-                    placeholder = "e.g. Premium Kibble, Timothy Hay"
-                )
-
-                // Food Quantity
-                DietInputField(
-                    value = foodQuantity,
-                    onValueChange = { foodQuantity = it },
-                    label = "Portion / Quantity",
-                    placeholder = "e.g. 2 Cups, 1 Bowl, 100g"
-                )
-
-                // Calories
-                DietInputField(
-                    value = caloriesText,
-                    onValueChange = { caloriesText = it.filter { ch -> ch.isDigit() } },
-                    label = "Estimated Calories (kcal)",
-                    placeholder = "350",
-                    keyboardType = KeyboardType.Number
-                )
-
-                // Instructions
-                DietInputField(
-                    value = instructions,
-                    onValueChange = { instructions = it },
-                    label = "Feeding Notes / Instructions",
-                    placeholder = "e.g. Serve with fresh water at room temperature",
-                    singleLine = false
-                )
-
-                // Reminder Switch Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SoftBackground)
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Daily Reminder Alert",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "Send clock-exact alarm notification",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                    }
-                    Switch(
-                        checked = reminderEnabled,
-                        onCheckedChange = { reminderEnabled = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = MintSage
-                        )
-                    )
-                }
-
-                // Actions
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, BorderSubtle)
-                    ) {
-                        Text("Cancel", color = TextSecondary)
-                    }
-
-                    Button(
-                        onClick = {
-                            val caloriesInt = caloriesText.toIntOrNull() ?: 250
-                            onSave(
-                                mealName.trim().ifBlank { "Meal" },
-                                scheduledTime.trim().ifBlank { "8:00 AM" },
-                                foodName.trim(),
-                                foodQuantity.trim(),
-                                instructions.trim(),
-                                caloriesInt,
-                                reminderEnabled
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
-                    ) {
-                        Text("Save Changes", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
+    MealScheduleFormDialog(
+        title = "Edit ${schedule.mealName}",
+        initialMealName = schedule.mealName,
+        initialScheduledTime = schedule.scheduledTime,
+        initialFoodName = schedule.foodName,
+        initialFoodQuantity = schedule.foodQuantity,
+        initialCaloriesText = if (schedule.calories > 0) schedule.calories.toString() else "",
+        initialInstructions = schedule.instructions,
+        initialReminderEnabled = schedule.isReminderEnabled == 1,
+        confirmButtonText = "Save Changes",
+        isEditing = true,
+        onDismiss = onDismiss,
+        onSave = onSave
+    )
 }
 
 @Composable
@@ -972,206 +1165,20 @@ private fun MealAddDialog(
         reminderEnabled: Boolean
     ) -> Unit
 ) {
-    val context = LocalContext.current
-
-    var mealName by remember { mutableStateOf("") }
-    var scheduledTime by remember { mutableStateOf("4:30 PM") }
-    var foodName by remember { mutableStateOf("") }
-    var foodQuantity by remember { mutableStateOf("") }
-    var caloriesText by remember { mutableStateOf("150") }
-    var instructions by remember { mutableStateOf("") }
-    var reminderEnabled by remember { mutableStateOf(true) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        PetModernCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            containerColor = WarmPearl
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                Text(
-                    text = "Add Meal Schedule",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = EmeraldDark
-                )
-
-                // Quick presets
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    listOf("Breakfast", "Lunch", "Evening Snacks", "Dinner").forEach { preset ->
-                        FilterChip(
-                            selected = mealName.equals(preset, ignoreCase = true),
-                            onClick = {
-                                mealName = preset
-                                when (preset) {
-                                    "Breakfast" -> { scheduledTime = "8:00 AM"; caloriesText = "350" }
-                                    "Lunch" -> { scheduledTime = "1:00 PM"; caloriesText = "200" }
-                                    "Evening Snacks" -> { scheduledTime = "4:30 PM"; caloriesText = "100" }
-                                    "Dinner" -> { scheduledTime = "7:00 PM"; caloriesText = "350" }
-                                }
-                            },
-                            label = { Text(preset, style = MaterialTheme.typography.labelSmall) }
-                        )
-                    }
-                }
-
-                DietInputField(
-                    value = mealName,
-                    onValueChange = { mealName = it },
-                    label = "Meal Name",
-                    placeholder = "e.g. Evening Snacks"
-                )
-
-                // Scheduled Time
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Scheduled Feeding Time",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            showTimePickerDialog(context, scheduledTime) { selectedTime ->
-                                scheduledTime = selectedTime
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                        border = BorderStroke(1.dp, BorderSubtle)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = scheduledTime,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold,
-                                color = EmeraldDark
-                            )
-                            Icon(
-                                imageVector = Icons.Default.AccessTime,
-                                contentDescription = "Pick Time",
-                                tint = MintSage
-                            )
-                        }
-                    }
-                }
-
-                DietInputField(
-                    value = foodName,
-                    onValueChange = { foodName = it },
-                    label = "Food Name",
-                    placeholder = "e.g. Organic Crunch Biscuits"
-                )
-
-                DietInputField(
-                    value = foodQuantity,
-                    onValueChange = { foodQuantity = it },
-                    label = "Portion / Quantity",
-                    placeholder = "e.g. 50g or 1 Bowl"
-                )
-
-                DietInputField(
-                    value = caloriesText,
-                    onValueChange = { caloriesText = it.filter { ch -> ch.isDigit() } },
-                    label = "Estimated Calories (kcal)",
-                    placeholder = "150",
-                    keyboardType = KeyboardType.Number
-                )
-
-                DietInputField(
-                    value = instructions,
-                    onValueChange = { instructions = it },
-                    label = "Feeding Notes",
-                    placeholder = "e.g. Reward after afternoon play session",
-                    singleLine = false
-                )
-
-                // Reminder switch
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(SoftBackground)
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Daily Reminder Alert",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-                        Text(
-                            text = "Set daily notification alarm",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                    }
-                    Switch(
-                        checked = reminderEnabled,
-                        onCheckedChange = { reminderEnabled = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            checkedTrackColor = MintSage
-                        )
-                    )
-                }
-
-                // Actions
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, BorderSubtle)
-                    ) {
-                        Text("Cancel", color = TextSecondary)
-                    }
-
-                    Button(
-                        onClick = {
-                            val name = mealName.trim().ifBlank { "Snack" }
-                            val caloriesInt = caloriesText.toIntOrNull() ?: 150
-                            onSave(
-                                name,
-                                scheduledTime.trim().ifBlank { "4:30 PM" },
-                                foodName.trim(),
-                                foodQuantity.trim(),
-                                instructions.trim(),
-                                caloriesInt,
-                                reminderEnabled
-                            )
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
-                    ) {
-                        Text("Add Schedule", color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
+    MealScheduleFormDialog(
+        title = "Add Meal Schedule",
+        initialMealName = "",
+        initialScheduledTime = "",
+        initialFoodName = "",
+        initialFoodQuantity = "",
+        initialCaloriesText = "",
+        initialInstructions = "",
+        initialReminderEnabled = true,
+        confirmButtonText = "Add Schedule",
+        isEditing = false,
+        onDismiss = onDismiss,
+        onSave = onSave
+    )
 }
 
 // ============================================================================
@@ -1200,7 +1207,11 @@ private fun showTimePickerDialog(
     currentTimeStr: String,
     onTimeSelected: (String) -> Unit
 ) {
-    val cal = MealNotificationScheduler.parseTimeToCalendar(currentTimeStr)
+    val cal = if (currentTimeStr.isNotBlank()) {
+        MealNotificationScheduler.parseTimeToCalendar(currentTimeStr)
+    } else {
+        Calendar.getInstance()
+    }
     val initialHour = cal.get(Calendar.HOUR_OF_DAY)
     val initialMinute = cal.get(Calendar.MINUTE)
 
