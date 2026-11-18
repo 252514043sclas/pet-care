@@ -150,18 +150,69 @@ data class UpdateMealScheduleRequest(
 
 data class MealEntryDto(
     @SerializedName("id") val id: Int,
-    @SerializedName("pet_id") val petId: Int,
+    @SerializedName("pet_id") val petId: Int = 0,
+    @SerializedName("pet_name") val petName: String = "",
+    @SerializedName("pet_species") val petSpecies: String = "",
     @SerializedName("food_item") val foodItem: String,
-    @SerializedName("portion_size") val portionSize: String,
-    @SerializedName("calories") val calories: Int,
-    @SerializedName("meal_time") val mealTime: String
+    @SerializedName("portion_size") val portionSize: String = "",
+    @SerializedName("portion_quantity") val portionQuantity: Double = 1.0,
+    @SerializedName("portion_unit") val portionUnit: String = "g",
+    @SerializedName("calories") val calories: Int? = null,
+    @SerializedName("safety_status") val safetyStatus: String = "UNKNOWN",
+    @SerializedName("safety_warning") val safetyWarning: String? = null,
+    @SerializedName("meal_date") val mealDate: String = "",
+    @SerializedName("meal_time") val mealTime: String = "",
+    @SerializedName("created_at") val createdAt: String? = null
 )
 
 data class LogMealRequest(
+    @SerializedName("pet_id") val petId: Int? = null,
+    @SerializedName("pet_name") val petName: String? = null,
+    @SerializedName("pet_species") val petSpecies: String? = null,
     @SerializedName("food_item") val foodItem: String,
     @SerializedName("portion_size") val portionSize: String,
+    @SerializedName("portion_quantity") val portionQuantity: Double,
+    @SerializedName("portion_unit") val portionUnit: String,
     @SerializedName("calories") val calories: Int? = null,
+    @SerializedName("safety_status") val safetyStatus: String? = null,
+    @SerializedName("safety_warning") val safetyWarning: String? = null,
+    @SerializedName("meal_date") val mealDate: String? = null,
     @SerializedName("meal_time") val mealTime: String? = null
+)
+
+data class UpdateMealRequest(
+    @SerializedName("food_item") val foodItem: String,
+    @SerializedName("portion_size") val portionSize: String,
+    @SerializedName("portion_quantity") val portionQuantity: Double,
+    @SerializedName("portion_unit") val portionUnit: String,
+    @SerializedName("pet_species") val petSpecies: String? = null,
+    @SerializedName("calories") val calories: Int? = null,
+    @SerializedName("safety_status") val safetyStatus: String? = null,
+    @SerializedName("safety_warning") val safetyWarning: String? = null,
+    @SerializedName("meal_date") val mealDate: String? = null,
+    @SerializedName("meal_time") val mealTime: String? = null
+)
+
+data class AnalyzeFoodRequest(
+    @SerializedName("food_name") val foodName: String,
+    @SerializedName("portion_quantity") val portionQuantity: Double,
+    @SerializedName("portion_unit") val portionUnit: String,
+    @SerializedName("species") val species: String? = null,
+    @SerializedName("pet_id") val petId: Int? = null
+)
+
+data class FoodAnalysisDto(
+    @SerializedName("food_name") val foodName: String = "",
+    @SerializedName("species") val species: String = "",
+    @SerializedName("species_category") val speciesCategory: String = "other",
+    @SerializedName("portion_quantity") val portionQuantity: Double = 1.0,
+    @SerializedName("portion_unit") val portionUnit: String = "g",
+    @SerializedName("estimated_calories") val estimatedCalories: Int? = null,
+    @SerializedName("calories_available") val caloriesAvailable: Boolean = false,
+    @SerializedName("calorie_source") val calorieSource: String = "",
+    @SerializedName("grams_estimated") val gramsEstimated: Double? = null,
+    @SerializedName("safety_status") val safetyStatus: String = "UNKNOWN",
+    @SerializedName("safety_warning") val safetyWarning: String = ""
 )
 
 data class SafeToxicFoodDto(
@@ -173,23 +224,39 @@ data class SafeToxicFoodDto(
 
 // Weight Tracker
 data class WeightOverviewDto(
-    @SerializedName("current_weight") val currentWeight: Double = 1.80,
-    @SerializedName("target_weight") val targetWeight: Double = 1.70,
-    @SerializedName("status") val status: String = "Optimal",
+    @SerializedName("current_weight") val currentWeight: Double? = null,
+    @SerializedName("target_weight") val targetWeight: Double? = null,
+    @SerializedName("status") val status: String = "No Records",
     @SerializedName("history") val history: List<WeightEntryDto> = emptyList()
 )
 
 data class WeightEntryDto(
     @SerializedName("id") val id: Int = 0,
+    @SerializedName("pet_id") val petId: Int = 0,
     @SerializedName("weight_kg") val weightKg: Double,
     @SerializedName("recorded_date") val recordedDate: String,
-    @SerializedName("notes") val notes: String? = null
+    @SerializedName("notes") val notes: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
 )
 
 data class AddWeightRequest(
     @SerializedName("weight_kg") val weightKg: Double,
     @SerializedName("recorded_date") val recordedDate: String? = null,
     @SerializedName("notes") val notes: String? = null
+)
+
+data class UpdateWeightRequest(
+    @SerializedName("weight_kg") val weightKg: Double,
+    @SerializedName("recorded_date") val recordedDate: String? = null,
+    @SerializedName("notes") val notes: String? = null
+)
+
+data class UpdateTargetWeightRequest(
+    @SerializedName("target_weight_kg") val targetWeightKg: Double?
+)
+
+data class TargetWeightResponseDto(
+    @SerializedName("target_weight") val targetWeight: Double? = null
 )
 
 // Reminders & Grooming

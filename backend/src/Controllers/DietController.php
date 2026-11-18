@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Services\FoodNutritionSafetyService;
 use App\Utils\Database;
 use App\Utils\Response;
 use App\Utils\Validator;
@@ -246,15 +247,111 @@ class DietController {
         Response::success($fetchStmt->fetch(PDO::FETCH_ASSOC), 'Reminder status updated');
     }
 
-    public function meals(array $currentUser): void {
+    private function formatMealRow(array $row): array {
+        $qty = isset($row['portion_quantity']) ? round((float)$row['portion_quantity'], 2) : 1.0;
+        $unit = !empty($row['portion_unit']) ? (string)$row['portion_unit'] : 'cups';
+        $portionSize = !empty($row['portion_size']) ? (string)$row['portion_size'] : (rtrim(rtrim(number_format($qty, 2, '.', ''), '0'), '.') . ' ' . $unit);
+        $mealDate = !empty($row['meal_date'])
+            ? (string)$row['meal_date']
+            : (!empty($row['created_at']) ? date('M j, Y', strtotime((string)$row['created_at'])) : date('M j, Y'));
+
+        $petName = !empty($row['pet_name']) ? (string)$row['pet_name'] : (string)($row['resolved_pet_name'] ?? '');
+        $petSpecies = !empty($row['pet_species']) ? (string)$row['pet_species'] : (string)($row['resolved_pet_species'] ?? '');
+        $foodItem = (string)$row['food_item'];
+
+        $safetyStatus = !empty($row['safety_status']) ? strtoupper((string)$row['safety_status']) : 'UNKNOWN';
+        $safetyWarning = ($row['safety_warning'] !== null && trim((string)$row['safety_warning']) !== '')
+            ? (string)$row['safety_warning']
+            : null;
+
+        // For any legacy meal row missing a species-specific explanation, derive it dynamically
+        if ($safetyWarning === null && $foodItem !== '') {
+            $analysis = FoodNutritionSafetyService::analyze($foodItem, max(0.01, $qty), $unit, $petSpecies);
+            $safetyStatus = $analysis['safety_status'];
+            $safetyWarning = $analysis['safety_warning'];
+        }
+
+        return [
+            'id' => (int)$row['id'],
+            'pet_id' => (int)$row['pet_id'],
+            'pet_name' => $petName,
+            'pet_species' => $petSpecies,
+            'food_item' => $foodItem,
+            'portion_size' => $portionSize,
+            'portion_quantity' => $qty,
+            'portion_unit' => $unit,
+            'calories' => ($row['calories'] !== null && $row['calories'] !== '') ? (int)$row['calories'] : null,
+            'safety_status' => $safetyStatus,
+            'safety_warning' => $safetyWarning,
+            'meal_date' => $mealDate,
+            'meal_time' => (string)($row['meal_time'] ?? ''),
+            'created_at' => $row['created_at'] ?? null,
+        ];
+    }
+
+    public function analyzeFood(array $currentUser, array $input): void {
+        $foodName = trim((string)($input['food_name'] ?? $input['food_item'] ?? ''));
+        if ($foodName === '') {
+            Response::error('Food name is required.', 422);
+        }
+
+        $quantity = isset($input['portion_quantity']) ? (float)$input['portion_quantity'] : 1.0;
+        if ($quantity <= 0) {
+            Response::error('Portion quantity must be greater than zero.', 422);
+        }
+
+        $unit = trim((string)($input['portion_unit'] ?? 'g'));
+        $species = trim((string)($input['species'] ?? $input['pet_species'] ?? ''));
+
+        if ($species === '') {
+            $pdo = Database::getConnection();
+            $petId = $this->resolvePetId($pdo, $currentUser, $input);
+            if ($petId) {
+                $pStmt = $pdo->prepare('SELECT species FROM pets WHERE id = :id LIMIT 1');
+                $pStmt->execute([':id' => $petId]);
+                $pRow = $pStmt->fetch(PDO::FETCH_ASSOC);
+                if ($pRow) {
+                    $species = (string)$pRow['species'];
+                }
+            }
+        }
+
+        $analysis = FoodNutritionSafetyService::analyze($foodName, $quantity, $unit, $species);
+        Response::success($analysis, 'Food analyzed successfully');
+    }
+
+    public function meals(array $currentUser, array $input = []): void {
         $pdo = Database::getConnection();
-        $petId = $this->getActivePetId($pdo, (int)$currentUser['id']);
+        $petId = $this->resolvePetId($pdo, $currentUser, $input);
+        $dateFilter = isset($input['date']) ? trim((string)$input['date']) : '';
 
         $meals = [];
         if ($petId) {
-            $stmt = $pdo->prepare('SELECT * FROM meal_entries WHERE user_id = :user_id AND pet_id = :pet_id ORDER BY id DESC');
-            $stmt->execute([':user_id' => $currentUser['id'], ':pet_id' => $petId]);
-            $meals = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            if ($dateFilter !== '') {
+                $stmt = $pdo->prepare(
+                    'SELECT m.*, p.name AS resolved_pet_name, p.species AS resolved_pet_species
+                     FROM meal_entries m
+                     LEFT JOIN pets p ON m.pet_id = p.id
+                     WHERE m.user_id = :user_id AND m.pet_id = :pet_id AND m.meal_date = :meal_date
+                     ORDER BY m.created_at DESC, m.id DESC'
+                );
+                $stmt->execute([
+                    ':user_id' => $currentUser['id'],
+                    ':pet_id' => $petId,
+                    ':meal_date' => $dateFilter,
+                ]);
+            } else {
+                $stmt = $pdo->prepare(
+                    'SELECT m.*, p.name AS resolved_pet_name, p.species AS resolved_pet_species
+                     FROM meal_entries m
+                     LEFT JOIN pets p ON m.pet_id = p.id
+                     WHERE m.user_id = :user_id AND m.pet_id = :pet_id
+                     ORDER BY m.created_at DESC, m.id DESC'
+                );
+                $stmt->execute([':user_id' => $currentUser['id'], ':pet_id' => $petId]);
+            }
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $meals = array_map([$this, 'formatMealRow'], $rows);
         }
 
         Response::success($meals);
@@ -265,31 +362,78 @@ class DietController {
             'food_item' => 'required|max:255',
         ]);
         if (!empty($errors)) {
-            Response::error('Validation failed', 422, $errors);
+            Response::error('Food name is required.', 422, $errors);
         }
 
         $pdo = Database::getConnection();
-        $petId = !empty($input['pet_id']) ? (int)$input['pet_id'] : $this->getActivePetId($pdo, (int)$currentUser['id']);
+        $petId = $this->resolvePetId($pdo, $currentUser, $input);
 
         if (!$petId) {
             Response::error('No pet profile found to attach meal to.', 400);
         }
 
-        $portionSize = $input['portion_size'] ?? '1.0 Cup';
-        $calories = isset($input['calories']) ? (int)$input['calories'] : (int)(round(floatval($portionSize) * 200));
-        if ($calories <= 0) $calories = 150;
-        $mealTime = $input['meal_time'] ?? date('g:i A');
+        $petStmt = $pdo->prepare('SELECT name, species FROM pets WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $petStmt->execute([':id' => $petId, ':user_id' => $currentUser['id']]);
+        $petRow = $petStmt->fetch(PDO::FETCH_ASSOC);
+
+        $petName = !empty($input['pet_name']) ? trim((string)$input['pet_name']) : (string)($petRow['name'] ?? '');
+        $petSpecies = !empty($input['pet_species']) ? trim((string)$input['pet_species']) : (string)($petRow['species'] ?? '');
+
+        $foodItem = trim((string)$input['food_item']);
+        $portionQty = isset($input['portion_quantity']) ? (float)$input['portion_quantity'] : 0.0;
+        if ($portionQty <= 0) {
+            Response::error('Portion quantity must be greater than zero.', 422);
+        }
+
+        $allowedUnits = ['g', 'cups', 'pieces', 'tbsp', 'tsp'];
+        $rawUnit = strtolower(trim((string)($input['portion_unit'] ?? 'g')));
+        $portionUnit = FoodNutritionSafetyService::normalizeUnit($rawUnit);
+        if (!in_array($portionUnit, $allowedUnits, true)) {
+            Response::error('Invalid portion unit.', 422);
+        }
+
+        $qtyFormatted = rtrim(rtrim(number_format($portionQty, 2, '.', ''), '0'), '.');
+        $portionSize = !empty($input['portion_size']) ? trim((string)$input['portion_size']) : "{$qtyFormatted} {$portionUnit}";
+
+        $analysis = FoodNutritionSafetyService::analyze($foodItem, $portionQty, $portionUnit, $petSpecies);
+
+        $calories = array_key_exists('calories', $input)
+            ? (($input['calories'] !== null && $input['calories'] !== '') ? (int)$input['calories'] : null)
+            : $analysis['estimated_calories'];
+
+        $safetyStatus = !empty($input['safety_status'])
+            ? strtoupper(trim((string)$input['safety_status']))
+            : $analysis['safety_status'];
+        if (!in_array($safetyStatus, ['SAFE', 'TOXIC', 'UNKNOWN'], true)) {
+            $safetyStatus = $analysis['safety_status'];
+        }
+
+        $safetyWarning = array_key_exists('safety_warning', $input) && $input['safety_warning'] !== null
+            ? trim((string)$input['safety_warning'])
+            : $analysis['safety_warning'];
+
+        $mealDate = !empty($input['meal_date']) ? trim((string)$input['meal_date']) : date('M j, Y');
+        $mealTime = !empty($input['meal_time']) ? trim((string)$input['meal_time']) : date('g:i A');
 
         $stmt = $pdo->prepare(
-            'INSERT INTO meal_entries (pet_id, user_id, food_item, portion_size, calories, meal_time, created_at)
-             VALUES (:pet_id, :user_id, :food_item, :portion_size, :calories, :meal_time, NOW())'
+            'INSERT INTO meal_entries
+             (pet_id, pet_name, pet_species, user_id, food_item, portion_size, portion_quantity, portion_unit, calories, safety_status, safety_warning, meal_date, meal_time, created_at)
+             VALUES
+             (:pet_id, :pet_name, :pet_species, :user_id, :food_item, :portion_size, :portion_quantity, :portion_unit, :calories, :safety_status, :safety_warning, :meal_date, :meal_time, NOW())'
         );
         $stmt->execute([
             ':pet_id' => $petId,
+            ':pet_name' => $petName,
+            ':pet_species' => $petSpecies,
             ':user_id' => $currentUser['id'],
-            ':food_item' => trim($input['food_item']),
+            ':food_item' => $foodItem,
             ':portion_size' => $portionSize,
+            ':portion_quantity' => $portionQty,
+            ':portion_unit' => $portionUnit,
             ':calories' => $calories,
+            ':safety_status' => $safetyStatus,
+            ':safety_warning' => $safetyWarning,
+            ':meal_date' => $mealDate,
             ':meal_time' => $mealTime,
         ]);
 
@@ -297,8 +441,105 @@ class DietController {
 
         $fetchStmt = $pdo->prepare('SELECT * FROM meal_entries WHERE id = :id');
         $fetchStmt->execute([':id' => $mealId]);
+        $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
-        Response::success($fetchStmt->fetch(PDO::FETCH_ASSOC), 'Meal logged successfully', 201);
+        Response::success($this->formatMealRow($row), 'Meal logged successfully', 201);
+    }
+
+    public function updateMeal(array $currentUser, int $id, array $input): void {
+        $pdo = Database::getConnection();
+
+        $check = $pdo->prepare('SELECT * FROM meal_entries WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $check->execute([':id' => $id, ':user_id' => $currentUser['id']]);
+        $existing = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$existing) {
+            Response::notFound('Meal entry not found or unauthorized');
+        }
+
+        $foodItem = isset($input['food_item']) ? trim((string)$input['food_item']) : (string)$existing['food_item'];
+        if ($foodItem === '') {
+            Response::error('Food name cannot be empty.', 422);
+        }
+
+        $portionQty = isset($input['portion_quantity']) ? (float)$input['portion_quantity'] : (float)$existing['portion_quantity'];
+        if ($portionQty <= 0) {
+            Response::error('Portion quantity must be greater than zero.', 422);
+        }
+
+        $rawUnit = isset($input['portion_unit']) ? (string)$input['portion_unit'] : (string)$existing['portion_unit'];
+        $portionUnit = FoodNutritionSafetyService::normalizeUnit($rawUnit);
+
+        $qtyFormatted = rtrim(rtrim(number_format($portionQty, 2, '.', ''), '0'), '.');
+        $portionSize = !empty($input['portion_size']) ? trim((string)$input['portion_size']) : "{$qtyFormatted} {$portionUnit}";
+
+        $petSpecies = !empty($input['pet_species']) ? trim((string)$input['pet_species']) : (string)($existing['pet_species'] ?? '');
+        $analysis = FoodNutritionSafetyService::analyze($foodItem, $portionQty, $portionUnit, $petSpecies);
+
+        $calories = array_key_exists('calories', $input)
+            ? (($input['calories'] !== null && $input['calories'] !== '') ? (int)$input['calories'] : null)
+            : $analysis['estimated_calories'];
+
+        $safetyStatus = !empty($input['safety_status'])
+            ? strtoupper(trim((string)$input['safety_status']))
+            : $analysis['safety_status'];
+        if (!in_array($safetyStatus, ['SAFE', 'TOXIC', 'UNKNOWN'], true)) {
+            $safetyStatus = $analysis['safety_status'];
+        }
+
+        $safetyWarning = array_key_exists('safety_warning', $input) && $input['safety_warning'] !== null
+            ? trim((string)$input['safety_warning'])
+            : $analysis['safety_warning'];
+
+        $mealDate = !empty($input['meal_date']) ? trim((string)$input['meal_date']) : (string)($existing['meal_date'] ?? date('M j, Y'));
+        $mealTime = !empty($input['meal_time']) ? trim((string)$input['meal_time']) : (string)$existing['meal_time'];
+
+        $up = $pdo->prepare(
+            'UPDATE meal_entries SET
+                food_item = :food_item,
+                portion_size = :portion_size,
+                portion_quantity = :portion_quantity,
+                portion_unit = :portion_unit,
+                calories = :calories,
+                safety_status = :safety_status,
+                safety_warning = :safety_warning,
+                meal_date = :meal_date,
+                meal_time = :meal_time,
+                updated_at = NOW()
+             WHERE id = :id AND user_id = :user_id'
+        );
+        $up->execute([
+            ':food_item' => $foodItem,
+            ':portion_size' => $portionSize,
+            ':portion_quantity' => $portionQty,
+            ':portion_unit' => $portionUnit,
+            ':calories' => $calories,
+            ':safety_status' => $safetyStatus,
+            ':safety_warning' => $safetyWarning,
+            ':meal_date' => $mealDate,
+            ':meal_time' => $mealTime,
+            ':id' => $id,
+            ':user_id' => $currentUser['id'],
+        ]);
+
+        $fetch = $pdo->prepare('SELECT * FROM meal_entries WHERE id = :id');
+        $fetch->execute([':id' => $id]);
+        $updated = $fetch->fetch(PDO::FETCH_ASSOC);
+
+        Response::success($this->formatMealRow($updated), 'Meal entry updated successfully');
+    }
+
+    public function deleteMeal(array $currentUser, int $id): void {
+        $pdo = Database::getConnection();
+        $check = $pdo->prepare('SELECT id FROM meal_entries WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $check->execute([':id' => $id, ':user_id' => $currentUser['id']]);
+        if (!$check->fetch()) {
+            Response::notFound('Meal entry not found or unauthorized');
+        }
+
+        $del = $pdo->prepare('DELETE FROM meal_entries WHERE id = :id AND user_id = :user_id');
+        $del->execute([':id' => $id, ':user_id' => $currentUser['id']]);
+
+        Response::success(['id' => $id], 'Meal entry deleted successfully');
     }
 
     public function safeToxicFoods(): void {

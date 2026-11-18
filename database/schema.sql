@@ -66,6 +66,7 @@ CREATE TABLE `pets` (
     `breed` VARCHAR(100) NOT NULL,
     `age_years` VARCHAR(50) NOT NULL, -- e.g. "1.2 yrs"
     `weight_kg` DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+    `target_weight_kg` DECIMAL(6,2) NULL DEFAULT NULL,
     `gender` VARCHAR(20) NOT NULL DEFAULT 'Female',
     `microchip_id` VARCHAR(50) NULL,
     `health_score` INT NOT NULL DEFAULT 95,
@@ -85,9 +86,10 @@ CREATE TABLE `weight_entries` (
     `pet_id` INT UNSIGNED NOT NULL,
     `user_id` INT UNSIGNED NOT NULL,
     `weight_kg` DECIMAL(6,2) NOT NULL,
-    `recorded_date` VARCHAR(50) NOT NULL, -- e.g. "Jan 1" or "Oct 29"
+    `recorded_date` VARCHAR(50) NOT NULL, -- e.g. "Nov 18, 2026"
     `notes` VARCHAR(255) NULL,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`pet_id`) REFERENCES `pets`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_weight_pet` (`pet_id`)
@@ -114,12 +116,20 @@ CREATE TABLE `care_reminders` (
 CREATE TABLE `meal_entries` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `pet_id` INT UNSIGNED NOT NULL,
+    `pet_name` VARCHAR(100) NULL,
+    `pet_species` VARCHAR(50) NULL,
     `user_id` INT UNSIGNED NOT NULL,
     `food_item` VARCHAR(255) NOT NULL,
-    `portion_size` VARCHAR(50) NOT NULL, -- e.g. "1.5 Cups"
-    `calories` INT NOT NULL DEFAULT 150,
+    `portion_size` VARCHAR(50) NOT NULL, -- e.g. "100 g", "1.5 cups"
+    `portion_quantity` DECIMAL(8,2) NOT NULL DEFAULT 1.00,
+    `portion_unit` VARCHAR(30) NOT NULL DEFAULT 'cups',
+    `calories` INT NULL DEFAULT NULL, -- nullable when nutrition data is unavailable
+    `safety_status` VARCHAR(20) NOT NULL DEFAULT 'UNKNOWN', -- SAFE, TOXIC, UNKNOWN
+    `safety_warning` TEXT NULL,
+    `meal_date` VARCHAR(30) NULL, -- e.g. "Nov 18, 2026"
     `meal_time` VARCHAR(50) NOT NULL, -- e.g. "8:00 AM"
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`pet_id`) REFERENCES `pets`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_meals_pet` (`pet_id`)

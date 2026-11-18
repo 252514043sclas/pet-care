@@ -95,11 +95,35 @@ interface PetCareApiService {
         @Body request: AddWeightRequest
     ): Response<ApiResponse<WeightEntryDto>>
 
+    @PUT("pets/{id}/weights/{weightId}")
+    suspend fun updatePetWeight(
+        @Path("id") petId: Int,
+        @Path("weightId") weightId: Int,
+        @Body request: UpdateWeightRequest
+    ): Response<ApiResponse<WeightEntryDto>>
+
+    @DELETE("pets/{id}/weights/{weightId}")
+    suspend fun deletePetWeight(
+        @Path("id") petId: Int,
+        @Path("weightId") weightId: Int
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @PUT("pets/{id}/target-weight")
+    suspend fun updateTargetWeight(
+        @Path("id") petId: Int,
+        @Body request: UpdateTargetWeightRequest
+    ): Response<ApiResponse<TargetWeightResponseDto>>
+
     // ----------------------------------------------------
     // Diet & Nutrition
     // ----------------------------------------------------
     @GET("diet/summary")
     suspend fun getDietSummary(): Response<ApiResponse<DietSummaryDto>>
+
+    @POST("diet/analyze-food")
+    suspend fun analyzeFood(
+        @Body request: AnalyzeFoodRequest
+    ): Response<ApiResponse<FoodAnalysisDto>>
 
     @GET("diet/schedule")
     suspend fun getMealSchedule(
@@ -128,12 +152,26 @@ interface PetCareApiService {
     ): Response<ApiResponse<MealScheduleDto>>
 
     @GET("diet/meals")
-    suspend fun getLoggedMeals(): Response<ApiResponse<List<MealEntryDto>>>
+    suspend fun getLoggedMeals(
+        @Query("pet_id") petId: Int? = null,
+        @Query("date") date: String? = null
+    ): Response<ApiResponse<List<MealEntryDto>>>
 
     @POST("diet/meals")
     suspend fun logMeal(
         @Body request: LogMealRequest
     ): Response<ApiResponse<MealEntryDto>>
+
+    @PUT("diet/meals/{id}")
+    suspend fun updateLoggedMeal(
+        @Path("id") id: Int,
+        @Body request: UpdateMealRequest
+    ): Response<ApiResponse<MealEntryDto>>
+
+    @DELETE("diet/meals/{id}")
+    suspend fun deleteLoggedMeal(
+        @Path("id") id: Int
+    ): Response<ApiResponse<Map<String, Any>>>
 
     @GET("diet/foods/safe-toxic")
     suspend fun getSafeToxicFoods(): Response<ApiResponse<List<SafeToxicFoodDto>>>

@@ -321,13 +321,52 @@ class PetCareRepository(private val context: Context) {
         }
     }
 
-    suspend fun addWeight(petId: Int, weightKg: Double, date: String? = null): Result<WeightEntryDto> = withContext(Dispatchers.IO) {
+    suspend fun addWeight(petId: Int, weightKg: Double, date: String? = null, notes: String? = null): Result<WeightEntryDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.addPetWeight(petId, AddWeightRequest(weightKg = weightKg, recordedDate = date))
+            val response = api.addPetWeight(petId, AddWeightRequest(weightKg = weightKg, recordedDate = date, notes = notes))
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(response.body()!!.data!!)
             } else {
-                Result.failure(Exception(response.body()?.message ?: "Failed to record weight"))
+                Result.failure(Exception(parseErrorMessage(response, response.body()?.message ?: "Failed to record weight")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updateWeight(petId: Int, weightId: Int, weightKg: Double, date: String? = null, notes: String? = null): Result<WeightEntryDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updatePetWeight(petId, weightId, UpdateWeightRequest(weightKg = weightKg, recordedDate = date, notes = notes))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                Result.failure(Exception(parseErrorMessage(response, response.body()?.message ?: "Failed to update weight entry")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deleteWeight(petId: Int, weightId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deletePetWeight(petId, weightId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(parseErrorMessage(response, "Failed to delete weight entry")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updateTargetWeight(petId: Int, targetWeightKg: Double?): Result<Double?> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updateTargetWeight(petId, UpdateTargetWeightRequest(targetWeightKg = targetWeightKg))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()?.data?.targetWeight)
+            } else {
+                Result.failure(Exception(parseErrorMessage(response, response.body()?.message ?: "Failed to update target weight")))
             }
         } catch (e: Exception) {
             Result.failure(Exception(formatNetworkError(e)))
@@ -415,14 +454,78 @@ class PetCareRepository(private val context: Context) {
         }
     }
 
-    suspend fun logMeal(foodItem: String, portionSize: String, calories: Int? = null): Result<MealEntryDto> = withContext(Dispatchers.IO) {
+    suspend fun analyzeFood(
+        foodName: String,
+        quantity: Double,
+        unit: String,
+        species: String? = null,
+        petId: Int? = null
+    ): Result<FoodAnalysisDto> = withContext(Dispatchers.IO) {
         try {
-            val req = LogMealRequest(foodItem = foodItem, portionSize = portionSize, calories = calories)
-            val response = api.logMeal(req)
+            val req = AnalyzeFoodRequest(
+                foodName = foodName,
+                portionQuantity = quantity,
+                portionUnit = unit,
+                species = species,
+                petId = petId
+            )
+            val response = api.analyzeFood(req)
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                Result.failure(Exception(parseErrorMessage(response, response.body()?.message ?: "Failed to analyze food")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getLoggedMeals(petId: Int? = null, date: String? = null): Result<List<MealEntryDto>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getLoggedMeals(petId, date)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data ?: emptyList())
+            } else {
+                Result.failure(Exception(parseErrorMessage(response, response.body()?.message ?: "Failed to load meal history")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun logMeal(request: LogMealRequest): Result<MealEntryDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.logMeal(request)
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(response.body()!!.data!!)
             } else {
-                Result.failure(Exception(response.body()?.message ?: "Failed to log meal"))
+                Result.failure(Exception(parseErrorMessage(response, response.body()?.message ?: "Failed to save meal entry")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updateLoggedMeal(id: Int, request: UpdateMealRequest): Result<MealEntryDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updateLoggedMeal(id, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                Result.failure(Exception(parseErrorMessage(response, response.body()?.message ?: "Failed to update meal entry")))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deleteLoggedMeal(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteLoggedMeal(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception(parseErrorMessage(response, "Failed to delete meal entry")))
             }
         } catch (e: Exception) {
             Result.failure(Exception(formatNetworkError(e)))

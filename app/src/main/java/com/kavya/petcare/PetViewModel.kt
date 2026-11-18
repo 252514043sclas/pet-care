@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.kavya.petcare.data.local.WeightMealCacheStore
 import com.kavya.petcare.data.models.*
 import com.kavya.petcare.data.repository.PetCareRepository
 import com.kavya.petcare.data.session.SessionManager
@@ -104,15 +105,29 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     )
     val reminders: StateFlow<List<CareReminder>> = _reminders.asStateFlow()
 
-    // Meals StateFlow
-    private val _meals = MutableStateFlow<List<MealEntry>>(
-        listOf(
-            MealEntry("1", "Fresh Timothy Hay", 150, "8:00 AM"),
-            MealEntry("2", "Romaine Lettuce & Herbs", 45, "12:30 PM"),
-            MealEntry("3", "Pellet Portion", 80, "6:00 PM")
-        )
-    )
+    // Meals StateFlow (NO hardcoded dummy data)
+    private val _meals = MutableStateFlow<List<MealEntry>>(emptyList())
     val meals: StateFlow<List<MealEntry>> = _meals.asStateFlow()
+
+    // Persistent Meal History StateFlow (from MySQL + local cache)
+    private val _mealHistory = MutableStateFlow<List<MealEntryDto>>(emptyList())
+    val mealHistory: StateFlow<List<MealEntryDto>> = _mealHistory.asStateFlow()
+
+    private val _isLoadingMeals = MutableStateFlow(false)
+    val isLoadingMeals: StateFlow<Boolean> = _isLoadingMeals.asStateFlow()
+
+    private val _mealHistoryError = MutableStateFlow<String?>(null)
+    val mealHistoryError: StateFlow<String?> = _mealHistoryError.asStateFlow()
+
+    // Dynamic Food Analysis StateFlows (Calories + Species Safety)
+    private val _foodAnalysis = MutableStateFlow<FoodAnalysisDto?>(null)
+    val foodAnalysis: StateFlow<FoodAnalysisDto?> = _foodAnalysis.asStateFlow()
+
+    private val _isAnalyzingFood = MutableStateFlow(false)
+    val isAnalyzingFood: StateFlow<Boolean> = _isAnalyzingFood.asStateFlow()
+
+    private val _foodAnalysisError = MutableStateFlow<String?>(null)
+    val foodAnalysisError: StateFlow<String?> = _foodAnalysisError.asStateFlow()
 
     // Feeding Schedule / Meal Schedules StateFlow
     private val _mealSchedules = MutableStateFlow<List<MealScheduleDto>>(emptyList())
@@ -122,15 +137,16 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     private val _dietSummary = MutableStateFlow<DietSummaryDto?>(null)
     val dietSummary: StateFlow<DietSummaryDto?> = _dietSummary.asStateFlow()
 
-    // Weight History StateFlow
-    private val _weightHistory = MutableStateFlow<List<WeightEntry>>(
-        listOf(
-            WeightEntry("Jan 1", 1.6f),
-            WeightEntry("Feb 1", 1.7f),
-            WeightEntry("Mar 1", 1.8f)
-        )
-    )
+    // Weight History StateFlow (NO hardcoded dummy data)
+    private val _weightHistory = MutableStateFlow<List<WeightEntry>>(emptyList())
     val weightHistory: StateFlow<List<WeightEntry>> = _weightHistory.asStateFlow()
+
+    // Persistent Weight Tracker StateFlows (from MySQL + local cache)
+    private val _weightOverview = MutableStateFlow<WeightOverviewDto?>(null)
+    val weightOverview: StateFlow<WeightOverviewDto?> = _weightOverview.asStateFlow()
+
+    private val _weightEntries = MutableStateFlow<List<WeightEntryDto>>(emptyList())
+    val weightEntries: StateFlow<List<WeightEntryDto>> = _weightEntries.asStateFlow()
 
     // Safe vs Toxic Foods
     private val _safeToxicFoods = MutableStateFlow<List<SafeToxicFoodDto>>(emptyList())
@@ -173,6 +189,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         loadConditionDetail(1)
         loadMealSchedules()
         loadDietSummary()
+        loadWeightHistory()
+        loadMealHistory()
     }
 
     // ----------------------------------------------------
@@ -263,6 +281,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                         healthScore = p.healthScore,
                         vaccinationStatus = p.vaccinationStatus
                     )
+                    loadWeightHistory(p.id)
+                    loadMealHistory(p.id)
                 }
                 _userAvatarUrl.value = session.getUserAvatarUrl()
 
@@ -421,6 +441,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             repository.updatePetDetails(p.id, UpdatePetRequest(isActive = 1))
             refreshDashboard()
             loadAllPets()
+            loadWeightHistory(p.id)
+            loadMealHistory(p.id)
         }
     }
 
@@ -531,9 +553,16 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             _isLoading.value = true
             repository.logout()
             com.kavya.petcare.ui.components.PetImageLoader.clearMemoryCache()
+            WeightMealCacheStore.clearAll(getApplication())
             _activePet.value = PetProfile()
             _userAvatarUrl.value = null
             _allPets.value = emptyList()
+            _weightOverview.value = null
+            _weightEntries.value = emptyList()
+            _weightHistory.value = emptyList()
+            _mealHistory.value = emptyList()
+            _meals.value = emptyList()
+            _foodAnalysis.value = null
             resetShared()
             _isLoading.value = false
             onComplete()
@@ -845,35 +874,339 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun addMeal(mealName: String, calories: Int, time: String, onDone: (() -> Unit)? = null) {
-        viewModelScope.launch {
-            val newMeal = MealEntry(
-                id = java.util.UUID.randomUUID().toString(),
-                mealName = mealName,
-                calories = calories,
-                time = time
-            )
-            _meals.value = _meals.value + newMeal
+    // ----------------------------------------------------
+    // Dynamic Food Analysis & Persistent Meal History CRUD
+    // ----------------------------------------------------
+    fun clearFoodAnalysis() {
+        _foodAnalysis.value = null
+        _foodAnalysisError.value = null
+        _isAnalyzingFood.value = false
+    }
 
-            repository.logMeal(mealName, "1.0 Cup", calories).onSuccess {
-                refreshDashboard()
+    fun analyzeFood(foodName: String, quantity: Double, unit: String, species: String? = null) {
+        val trimmed = foodName.trim()
+        if (trimmed.isBlank() || quantity <= 0.0) {
+            _foodAnalysis.value = null
+            _foodAnalysisError.value = null
+            _isAnalyzingFood.value = false
+            return
+        }
+        val petId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        val targetSpecies = species ?: _activePet.value.type
+
+        viewModelScope.launch {
+            _isAnalyzingFood.value = true
+            _foodAnalysisError.value = null
+            val result = repository.analyzeFood(
+                foodName = trimmed,
+                quantity = quantity,
+                unit = unit,
+                species = targetSpecies,
+                petId = petId
+            )
+            _isAnalyzingFood.value = false
+            result.onSuccess { analysis ->
+                _foodAnalysis.value = analysis
+            }.onFailure { err ->
+                _foodAnalysisError.value = err.message ?: "Unable to check food nutrition & safety"
             }
-            onDone?.invoke()
+        }
+    }
+
+    suspend fun analyzeFoodDirect(foodName: String, quantity: Double, unit: String, species: String? = null): Result<FoodAnalysisDto> {
+        val petId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        val targetSpecies = species ?: _activePet.value.type
+        return repository.analyzeFood(
+            foodName = foodName.trim(),
+            quantity = quantity,
+            unit = unit,
+            species = targetSpecies,
+            petId = petId
+        )
+    }
+
+    fun loadMealHistory(petId: Int? = null, dateFilter: String? = null) {
+        val targetPetId = petId ?: _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        if (targetPetId <= 0) return
+
+        if (dateFilter.isNullOrBlank()) {
+            val cached = WeightMealCacheStore.getMealHistory(getApplication(), targetPetId)
+            _mealHistory.value = cached
+            _meals.value = cached.map {
+                MealEntry(
+                    id = it.id.toString(),
+                    mealName = it.foodItem,
+                    calories = it.calories ?: 0,
+                    time = it.mealTime
+                )
+            }
+        }
+
+        viewModelScope.launch {
+            _isLoadingMeals.value = true
+            _mealHistoryError.value = null
+            repository.getLoggedMeals(targetPetId, dateFilter).onSuccess { list ->
+                _isLoadingMeals.value = false
+                _mealHistoryError.value = null
+                _mealHistory.value = list
+                _meals.value = list.map {
+                    MealEntry(
+                        id = it.id.toString(),
+                        mealName = it.foodItem,
+                        calories = it.calories ?: 0,
+                        time = it.mealTime
+                    )
+                }
+                if (dateFilter.isNullOrBlank()) {
+                    WeightMealCacheStore.saveMealHistory(getApplication(), targetPetId, list)
+                }
+            }.onFailure { err ->
+                _isLoadingMeals.value = false
+                _mealHistoryError.value = err.message ?: "Unable to load food safety history. Please check your connection."
+            }
+        }
+    }
+
+    fun saveMealEntry(
+        foodItem: String,
+        portionQuantity: Double,
+        portionUnit: String,
+        calories: Int?,
+        safetyStatus: String,
+        safetyWarning: String?,
+        mealDate: String,
+        mealTime: String,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val pet = _activePet.value
+        val targetPetId = pet.id.toIntOrNull() ?: session.getActivePetId()
+        val qtyStr = if (portionQuantity % 1.0 == 0.0) {
+            portionQuantity.toInt().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.2f", portionQuantity).trimEnd('0').trimEnd('.')
+        }
+        val portionDisplay = "$qtyStr $portionUnit"
+
+        viewModelScope.launch {
+            val req = LogMealRequest(
+                petId = targetPetId,
+                petName = pet.name,
+                petSpecies = pet.type,
+                foodItem = foodItem.trim(),
+                portionSize = portionDisplay,
+                portionQuantity = portionQuantity,
+                portionUnit = portionUnit,
+                calories = calories,
+                safetyStatus = safetyStatus,
+                safetyWarning = safetyWarning,
+                mealDate = mealDate,
+                mealTime = mealTime
+            )
+            val result = repository.logMeal(req)
+            result.onSuccess { saved ->
+                val updated = listOf(saved) + _mealHistory.value.filter { it.id != saved.id }
+                _mealHistory.value = updated
+                _meals.value = updated.map {
+                    MealEntry(it.id.toString(), it.foodItem, it.calories ?: 0, it.mealTime)
+                }
+                WeightMealCacheStore.saveMealHistory(getApplication(), targetPetId, updated)
+                loadDietSummary()
+                onResult(true, "Meal entry saved successfully")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "Failed to save meal entry")
+            }
+        }
+    }
+
+    fun updateMealEntry(
+        id: Int,
+        foodItem: String,
+        portionQuantity: Double,
+        portionUnit: String,
+        calories: Int?,
+        safetyStatus: String,
+        safetyWarning: String?,
+        mealDate: String,
+        mealTime: String,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val pet = _activePet.value
+        val targetPetId = pet.id.toIntOrNull() ?: session.getActivePetId()
+        val qtyStr = if (portionQuantity % 1.0 == 0.0) {
+            portionQuantity.toInt().toString()
+        } else {
+            String.format(java.util.Locale.US, "%.2f", portionQuantity).trimEnd('0').trimEnd('.')
+        }
+        val portionDisplay = "$qtyStr $portionUnit"
+
+        viewModelScope.launch {
+            val req = UpdateMealRequest(
+                foodItem = foodItem.trim(),
+                portionSize = portionDisplay,
+                portionQuantity = portionQuantity,
+                portionUnit = portionUnit,
+                petSpecies = pet.type,
+                calories = calories,
+                safetyStatus = safetyStatus,
+                safetyWarning = safetyWarning,
+                mealDate = mealDate,
+                mealTime = mealTime
+            )
+            val result = repository.updateLoggedMeal(id, req)
+            result.onSuccess { updatedItem ->
+                val updatedList = _mealHistory.value.map { if (it.id == id) updatedItem else it }
+                _mealHistory.value = updatedList
+                _meals.value = updatedList.map {
+                    MealEntry(it.id.toString(), it.foodItem, it.calories ?: 0, it.mealTime)
+                }
+                WeightMealCacheStore.saveMealHistory(getApplication(), targetPetId, updatedList)
+                loadDietSummary()
+                onResult(true, "Meal entry updated")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "Failed to update meal entry")
+            }
+        }
+    }
+
+    fun deleteMealEntry(id: Int, onResult: (Boolean, String) -> Unit) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        viewModelScope.launch {
+            val result = repository.deleteLoggedMeal(id)
+            result.onSuccess {
+                val remaining = _mealHistory.value.filter { it.id != id }
+                _mealHistory.value = remaining
+                _meals.value = remaining.map {
+                    MealEntry(it.id.toString(), it.foodItem, it.calories ?: 0, it.mealTime)
+                }
+                WeightMealCacheStore.saveMealHistory(getApplication(), targetPetId, remaining)
+                loadDietSummary()
+                onResult(true, "Meal entry deleted")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "Failed to delete meal entry")
+            }
         }
     }
 
     // ----------------------------------------------------
-    // Weight Operations
+    // Persistent Weight Tracker Operations (CRUD + Target)
     // ----------------------------------------------------
-    fun addWeightEntry(date: String, weightKg: Float, onDone: (() -> Unit)? = null) {
-        viewModelScope.launch {
-            val newEntry = WeightEntry(date, weightKg)
-            _weightHistory.value = _weightHistory.value + newEntry
-            _activePet.value = _activePet.value.copy(weight = "$weightKg kg")
+    fun loadWeightHistory(petId: Int? = null) {
+        val targetPetId = petId ?: _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        if (targetPetId <= 0) return
 
-            val activeId = _activePet.value.id.toIntOrNull() ?: 1
-            repository.addWeight(activeId, weightKg.toDouble(), date)
-            onDone?.invoke()
+        val cached = WeightMealCacheStore.getWeightOverview(getApplication(), targetPetId)
+        if (cached != null) {
+            _weightOverview.value = cached
+            _weightEntries.value = cached.history
+            _weightHistory.value = cached.history.map { WeightEntry(it.recordedDate, it.weightKg.toFloat()) }
+        } else {
+            _weightOverview.value = WeightOverviewDto(currentWeight = null, targetWeight = null, status = "No Records", history = emptyList())
+            _weightEntries.value = emptyList()
+            _weightHistory.value = emptyList()
+        }
+
+        viewModelScope.launch {
+            repository.getPetWeights(targetPetId).onSuccess { overview ->
+                _weightOverview.value = overview
+                _weightEntries.value = overview.history
+                _weightHistory.value = overview.history.map { WeightEntry(it.recordedDate, it.weightKg.toFloat()) }
+                WeightMealCacheStore.saveWeightOverview(getApplication(), targetPetId, overview)
+                overview.currentWeight?.let { latest ->
+                    _activePet.value = _activePet.value.copy(weight = "$latest kg")
+                }
+            }
+        }
+    }
+
+    fun addWeightEntry(
+        date: String,
+        weightKg: Float,
+        notes: String? = null,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        viewModelScope.launch {
+            val result = repository.addWeight(targetPetId, weightKg.toDouble(), date, notes)
+            result.onSuccess {
+                repository.getPetWeights(targetPetId).onSuccess { overview ->
+                    _weightOverview.value = overview
+                    _weightEntries.value = overview.history
+                    _weightHistory.value = overview.history.map { WeightEntry(it.recordedDate, it.weightKg.toFloat()) }
+                    WeightMealCacheStore.saveWeightOverview(getApplication(), targetPetId, overview)
+                    overview.currentWeight?.let { latest ->
+                        _activePet.value = _activePet.value.copy(weight = "$latest kg")
+                    }
+                }
+                onResult(true, "Weight recorded successfully")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "Failed to save weight record")
+            }
+        }
+    }
+
+    fun updateWeightEntry(
+        weightId: Int,
+        weightKg: Float,
+        date: String,
+        notes: String? = null,
+        onResult: (Boolean, String) -> Unit
+    ) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        viewModelScope.launch {
+            val result = repository.updateWeight(targetPetId, weightId, weightKg.toDouble(), date, notes)
+            result.onSuccess {
+                repository.getPetWeights(targetPetId).onSuccess { overview ->
+                    _weightOverview.value = overview
+                    _weightEntries.value = overview.history
+                    _weightHistory.value = overview.history.map { WeightEntry(it.recordedDate, it.weightKg.toFloat()) }
+                    WeightMealCacheStore.saveWeightOverview(getApplication(), targetPetId, overview)
+                    overview.currentWeight?.let { latest ->
+                        _activePet.value = _activePet.value.copy(weight = "$latest kg")
+                    }
+                }
+                onResult(true, "Weight record updated")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "Failed to update weight record")
+            }
+        }
+    }
+
+    fun deleteWeightEntry(weightId: Int, onResult: (Boolean, String) -> Unit) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        viewModelScope.launch {
+            val result = repository.deleteWeight(targetPetId, weightId)
+            result.onSuccess {
+                repository.getPetWeights(targetPetId).onSuccess { overview ->
+                    _weightOverview.value = overview
+                    _weightEntries.value = overview.history
+                    _weightHistory.value = overview.history.map { WeightEntry(it.recordedDate, it.weightKg.toFloat()) }
+                    WeightMealCacheStore.saveWeightOverview(getApplication(), targetPetId, overview)
+                    val latest = overview.currentWeight
+                    if (latest != null) {
+                        _activePet.value = _activePet.value.copy(weight = "$latest kg")
+                    }
+                }
+                onResult(true, "Weight record deleted")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "Failed to delete weight record")
+            }
+        }
+    }
+
+    fun updateTargetWeight(targetKg: Double?, onResult: (Boolean, String) -> Unit) {
+        val targetPetId = _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
+        viewModelScope.launch {
+            val result = repository.updateTargetWeight(targetPetId, targetKg)
+            result.onSuccess {
+                repository.getPetWeights(targetPetId).onSuccess { overview ->
+                    _weightOverview.value = overview
+                    _weightEntries.value = overview.history
+                    WeightMealCacheStore.saveWeightOverview(getApplication(), targetPetId, overview)
+                }
+                onResult(true, if (targetKg != null) "Target weight updated" else "Target weight cleared")
+            }.onFailure { err ->
+                onResult(false, err.message ?: "Failed to update target weight")
+            }
         }
     }
 

@@ -84,23 +84,6 @@ class PetController {
 
         $petId = (int)$pdo->lastInsertId();
 
-        // Add initial weight entry
-        try {
-            $weightStmt = $pdo->prepare(
-                'INSERT INTO weight_entries (pet_id, user_id, weight_kg, recorded_date, notes, created_at)
-                 VALUES (:pet_id, :user_id, :weight_kg, :recorded_date, :notes, NOW())'
-            );
-            $weightStmt->execute([
-                ':pet_id' => $petId,
-                ':user_id' => $currentUser['id'],
-                ':weight_kg' => (float)$input['weight_kg'],
-                ':recorded_date' => date('M j'),
-                ':notes' => 'Initial weight record',
-            ]);
-        } catch (\Throwable $e) {
-            // Optional initial weight record
-        }
-
         // Fetch newly created pet
         $fetchStmt = $pdo->prepare('SELECT * FROM pets WHERE id = :id');
         $fetchStmt->execute([':id' => $petId]);
@@ -196,25 +179,72 @@ class PetController {
         Response::success(null, 'Pet profile deleted successfully');
     }
 
+    private function syncPetLatestWeight(PDO $pdo, int $petId): ?float {
+        $latestStmt = $pdo->prepare('SELECT weight_kg FROM weight_entries WHERE pet_id = :pet_id ORDER BY created_at DESC, id DESC LIMIT 1');
+        $latestStmt->execute([':pet_id' => $petId]);
+        $latestRow = $latestStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($latestRow) {
+            $latestWeight = (float)$latestRow['weight_kg'];
+            $updatePet = $pdo->prepare('UPDATE pets SET weight_kg = :w, updated_at = NOW() WHERE id = :id');
+            $updatePet->execute([':w' => $latestWeight, ':id' => $petId]);
+            return $latestWeight;
+        }
+        return null;
+    }
+
+    private function formatWeightRow(array $row): array {
+        return [
+            'id' => (int)$row['id'],
+            'pet_id' => (int)$row['pet_id'],
+            'weight_kg' => round((float)$row['weight_kg'], 2),
+            'recorded_date' => (string)$row['recorded_date'],
+            'notes' => $row['notes'] !== null ? (string)$row['notes'] : null,
+            'created_at' => $row['created_at'] ?? null,
+        ];
+    }
+
     public function weights(array $currentUser, int $petId): void {
         $pdo = Database::getConnection();
-        // Verify ownership
-        $check = $pdo->prepare('SELECT id, weight_kg FROM pets WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $check = $pdo->prepare('SELECT id, weight_kg, target_weight_kg FROM pets WHERE id = :id AND user_id = :user_id LIMIT 1');
         $check->execute([':id' => $petId, ':user_id' => $currentUser['id']]);
         $pet = $check->fetch(PDO::FETCH_ASSOC);
         if (!$pet) {
             Response::notFound('Pet not found');
         }
 
-        $stmt = $pdo->prepare('SELECT * FROM weight_entries WHERE pet_id = :pet_id ORDER BY id ASC');
-        $stmt->execute([':pet_id' => $petId]);
-        $weights = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare('SELECT * FROM weight_entries WHERE pet_id = :pet_id AND user_id = :user_id ORDER BY created_at DESC, id DESC');
+        $stmt->execute([':pet_id' => $petId, ':user_id' => $currentUser['id']]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $history = array_map([$this, 'formatWeightRow'], $rows);
+
+        $currentWeight = !empty($history) ? (float)$history[0]['weight_kg'] : null;
+        $targetWeight = ($pet['target_weight_kg'] !== null && (float)$pet['target_weight_kg'] > 0)
+            ? round((float)$pet['target_weight_kg'], 2)
+            : null;
+
+        $status = 'No Records';
+        if ($currentWeight !== null) {
+            if ($targetWeight !== null) {
+                $diffRatio = ($currentWeight - $targetWeight) / max(0.01, $targetWeight);
+                if (abs($diffRatio) <= 0.05) {
+                    $status = 'On Target';
+                } elseif ($diffRatio > 0.05) {
+                    $status = 'Above Target';
+                } else {
+                    $status = 'Below Target';
+                }
+            } else {
+                $status = 'Tracked';
+            }
+        }
 
         Response::success([
-            'current_weight' => (float)$pet['weight_kg'],
-            'target_weight' => round((float)$pet['weight_kg'] * 0.95, 1),
-            'status' => 'Optimal',
-            'history' => $weights,
+            'current_weight' => $currentWeight,
+            'target_weight' => $targetWeight,
+            'status' => $status,
+            'history' => $history,
         ]);
     }
 
@@ -223,7 +253,12 @@ class PetController {
             'weight_kg' => 'required|numeric',
         ]);
         if (!empty($errors)) {
-            Response::error('Validation failed', 422, $errors);
+            Response::error('Please enter a valid weight.', 422, $errors);
+        }
+
+        $weightKg = round((float)$input['weight_kg'], 2);
+        if ($weightKg <= 0 || $weightKg > 500) {
+            Response::error('Weight must be a valid positive number between 0.01 and 500 kg.', 422);
         }
 
         $pdo = Database::getConnection();
@@ -233,9 +268,8 @@ class PetController {
             Response::notFound('Pet not found');
         }
 
-        $weightKg = (float)$input['weight_kg'];
-        $date = !empty($input['recorded_date']) ? trim($input['recorded_date']) : date('M j');
-        $notes = $input['notes'] ?? null;
+        $date = !empty($input['recorded_date']) ? trim((string)$input['recorded_date']) : date('M j, Y');
+        $notes = isset($input['notes']) && trim((string)$input['notes']) !== '' ? trim((string)$input['notes']) : null;
 
         $stmt = $pdo->prepare(
             'INSERT INTO weight_entries (pet_id, user_id, weight_kg, recorded_date, notes, created_at)
@@ -249,15 +283,104 @@ class PetController {
             ':notes' => $notes,
         ]);
 
-        // Update pet's weight_kg
-        $updatePet = $pdo->prepare('UPDATE pets SET weight_kg = :w, updated_at = NOW() WHERE id = :id');
-        $updatePet->execute([':w' => $weightKg, ':id' => $petId]);
+        $newId = (int)$pdo->lastInsertId();
+        $this->syncPetLatestWeight($pdo, $petId);
 
-        Response::success([
-            'id' => (int)$pdo->lastInsertId(),
-            'weight_kg' => $weightKg,
-            'recorded_date' => $date,
-        ], 'Weight recorded successfully', 201);
+        $fetch = $pdo->prepare('SELECT * FROM weight_entries WHERE id = :id');
+        $fetch->execute([':id' => $newId]);
+        $row = $fetch->fetch(PDO::FETCH_ASSOC);
+
+        Response::success($this->formatWeightRow($row), 'Weight recorded successfully', 201);
+    }
+
+    public function updateWeight(array $currentUser, int $petId, int $weightId, array $input): void {
+        $errors = Validator::validate($input, [
+            'weight_kg' => 'required|numeric',
+        ]);
+        if (!empty($errors)) {
+            Response::error('Please enter a valid weight.', 422, $errors);
+        }
+
+        $weightKg = round((float)$input['weight_kg'], 2);
+        if ($weightKg <= 0 || $weightKg > 500) {
+            Response::error('Weight must be a valid positive number between 0.01 and 500 kg.', 422);
+        }
+
+        $pdo = Database::getConnection();
+        $check = $pdo->prepare('SELECT * FROM weight_entries WHERE id = :wid AND pet_id = :pet_id AND user_id = :user_id LIMIT 1');
+        $check->execute([':wid' => $weightId, ':pet_id' => $petId, ':user_id' => $currentUser['id']]);
+        $existing = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$existing) {
+            Response::notFound('Weight record not found or unauthorized');
+        }
+
+        $date = isset($input['recorded_date']) && trim((string)$input['recorded_date']) !== ''
+            ? trim((string)$input['recorded_date'])
+            : $existing['recorded_date'];
+        $notes = array_key_exists('notes', $input)
+            ? (trim((string)$input['notes']) !== '' ? trim((string)$input['notes']) : null)
+            : $existing['notes'];
+
+        $up = $pdo->prepare(
+            'UPDATE weight_entries SET weight_kg = :weight_kg, recorded_date = :recorded_date, notes = :notes, updated_at = NOW()
+             WHERE id = :wid AND pet_id = :pet_id AND user_id = :user_id'
+        );
+        $up->execute([
+            ':weight_kg' => $weightKg,
+            ':recorded_date' => $date,
+            ':notes' => $notes,
+            ':wid' => $weightId,
+            ':pet_id' => $petId,
+            ':user_id' => $currentUser['id'],
+        ]);
+
+        $this->syncPetLatestWeight($pdo, $petId);
+
+        $fetch = $pdo->prepare('SELECT * FROM weight_entries WHERE id = :id');
+        $fetch->execute([':id' => $weightId]);
+        $row = $fetch->fetch(PDO::FETCH_ASSOC);
+
+        Response::success($this->formatWeightRow($row), 'Weight entry updated successfully');
+    }
+
+    public function deleteWeight(array $currentUser, int $petId, int $weightId): void {
+        $pdo = Database::getConnection();
+        $check = $pdo->prepare('SELECT id FROM weight_entries WHERE id = :wid AND pet_id = :pet_id AND user_id = :user_id LIMIT 1');
+        $check->execute([':wid' => $weightId, ':pet_id' => $petId, ':user_id' => $currentUser['id']]);
+        if (!$check->fetch()) {
+            Response::notFound('Weight record not found or unauthorized');
+        }
+
+        $del = $pdo->prepare('DELETE FROM weight_entries WHERE id = :wid AND pet_id = :pet_id AND user_id = :user_id');
+        $del->execute([':wid' => $weightId, ':pet_id' => $petId, ':user_id' => $currentUser['id']]);
+
+        $this->syncPetLatestWeight($pdo, $petId);
+
+        Response::success(['id' => $weightId], 'Weight entry deleted successfully');
+    }
+
+    public function updateTargetWeight(array $currentUser, int $petId, array $input): void {
+        $pdo = Database::getConnection();
+        $check = $pdo->prepare('SELECT id FROM pets WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $check->execute([':id' => $petId, ':user_id' => $currentUser['id']]);
+        if (!$check->fetch()) {
+            Response::notFound('Pet not found or unauthorized');
+        }
+
+        $raw = $input['target_weight_kg'] ?? null;
+        if ($raw === null || $raw === '') {
+            $target = null;
+        } else {
+            if (!is_numeric($raw) || (float)$raw <= 0 || (float)$raw > 500) {
+                Response::error('Target weight must be a valid positive number.', 422);
+            }
+            $target = round((float)$raw, 2);
+        }
+
+        $up = $pdo->prepare('UPDATE pets SET target_weight_kg = :tw, updated_at = NOW() WHERE id = :id AND user_id = :user_id');
+        $up->execute([':tw' => $target, ':id' => $petId, ':user_id' => $currentUser['id']]);
+
+        Response::success(['target_weight' => $target], 'Target weight updated successfully');
     }
 
     public function uploadPhoto(array $currentUser, int $petId, array $input): void {

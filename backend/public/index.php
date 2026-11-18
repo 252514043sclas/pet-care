@@ -185,9 +185,25 @@ try {
         (new PetController())->addWeight($user, (int)$matches[1], $input);
     }
 
+    if (($requestMethod === 'PUT' || $requestMethod === 'PATCH') && preg_match('#^/api/pets/(\d+)/weights/(\d+)$#', $uri, $matches)) {
+        (new PetController())->updateWeight($user, (int)$matches[1], (int)$matches[2], $input);
+    }
+
+    if ($requestMethod === 'DELETE' && preg_match('#^/api/pets/(\d+)/weights/(\d+)$#', $uri, $matches)) {
+        (new PetController())->deleteWeight($user, (int)$matches[1], (int)$matches[2]);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST' || $requestMethod === 'PATCH') && preg_match('#^/api/pets/(\d+)/target-weight$#', $uri, $matches)) {
+        (new PetController())->updateTargetWeight($user, (int)$matches[1], $input);
+    }
+
     // Diet & Nutrition
     if ($requestMethod === 'GET' && $uri === '/api/diet/summary') {
         (new DietController())->summary($user, $input);
+    }
+
+    if ($requestMethod === 'POST' && $uri === '/api/diet/analyze-food') {
+        (new DietController())->analyzeFood($user, $input);
     }
 
     if ($requestMethod === 'GET' && $uri === '/api/diet/schedule') {
@@ -211,11 +227,19 @@ try {
     }
 
     if ($requestMethod === 'GET' && $uri === '/api/diet/meals') {
-        (new DietController())->meals($user);
+        (new DietController())->meals($user, $input);
     }
 
     if ($requestMethod === 'POST' && $uri === '/api/diet/meals') {
         (new DietController())->logMeal($user, $input);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'PATCH') && preg_match('#^/api/diet/meals/(\d+)$#', $uri, $matches)) {
+        (new DietController())->updateMeal($user, (int)$matches[1], $input);
+    }
+
+    if ($requestMethod === 'DELETE' && preg_match('#^/api/diet/meals/(\d+)$#', $uri, $matches)) {
+        (new DietController())->deleteMeal($user, (int)$matches[1]);
     }
 
     // Health & Diagnostics
