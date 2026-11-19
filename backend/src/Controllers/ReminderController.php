@@ -107,15 +107,6 @@ class ReminderController {
             $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
-        if (empty($tasks)) {
-            $tasks = [
-                ['id' => 1, 'date_time' => 'Oct 12, 10:00 AM', 'task' => 'Bath & Shampoo Session', 'is_completed' => false],
-                ['id' => 2, 'date_time' => 'Oct 19, 2:00 PM', 'task' => 'Nail Trimming & Filing', 'is_completed' => false],
-                ['id' => 3, 'date_time' => 'Oct 26, 11:00 AM', 'task' => 'Ear Cleaning & Checkup', 'is_completed' => false],
-                ['id' => 4, 'date_time' => 'Nov 02, 10:00 AM', 'task' => 'Full Grooming & Haircut', 'is_completed' => false],
-            ];
-        }
-
         Response::success($tasks);
     }
 

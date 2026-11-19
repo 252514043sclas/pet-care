@@ -8,8 +8,10 @@ import com.kavya.petcare.data.local.WeightMealCacheStore
 import com.kavya.petcare.data.models.*
 import com.kavya.petcare.data.repository.PetCareRepository
 import com.kavya.petcare.data.session.SessionManager
+import com.kavya.petcare.data.local.GroomingCacheStore
 import com.kavya.petcare.notifications.FeedingScheduleStore
 import com.kavya.petcare.notifications.MealNotificationScheduler
+import com.kavya.petcare.notifications.GroomingNotificationScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -178,13 +180,30 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     private val _preferences = MutableStateFlow(PreferencesDto())
     val preferences: StateFlow<PreferencesDto> = _preferences.asStateFlow()
 
+    // Dynamic Grooming Calendar Reminders
+    private val _groomingReminders = MutableStateFlow<List<GroomingReminderDto>>(emptyList())
+    val groomingReminders: StateFlow<List<GroomingReminderDto>> = _groomingReminders.asStateFlow()
+
+    private val _isLoadingGrooming = MutableStateFlow<Boolean>(false)
+    val isLoadingGrooming: StateFlow<Boolean> = _isLoadingGrooming.asStateFlow()
+
+    private val _groomingError = MutableStateFlow<String?>(null)
+    val groomingError: StateFlow<String?> = _groomingError.asStateFlow()
+
     init {
+        // Hydrate grooming reminders from cache for immediate instant load
+        val cachedGrooming = GroomingCacheStore.getReminders(getApplication())
+        if (cachedGrooming.isNotEmpty()) {
+            _groomingReminders.value = cachedGrooming
+        }
+
         // If user already has a session or on launch, fetch live data from backend
         refreshDashboard()
         loadAllPets()
         loadPreferences()
         loadSafeToxicFoods()
         loadCalendarTasks()
+        loadGroomingReminders()
         loadSymptoms()
         loadConditionDetail(1)
         loadMealSchedules()
@@ -696,6 +715,154 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         if (numericId != null) {
             viewModelScope.launch {
                 repository.toggleReminder(numericId)
+            }
+        }
+    }
+
+    // ----------------------------------------------------
+    // Dynamic Grooming Reminders & Calendar
+    // ----------------------------------------------------
+    fun loadGroomingReminders(petId: Int? = null, status: String? = null, onComplete: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            _isLoadingGrooming.value = true
+            _groomingError.value = null
+
+            val targetPetId = petId ?: _activePet.value.id.toIntOrNull()?.takeIf { it > 0 } ?: session.getActivePetId().takeIf { it > 0 }
+
+            repository.getGroomingReminders(petId = targetPetId, status = status).onSuccess { reminders ->
+                _groomingReminders.value = reminders
+                _isLoadingGrooming.value = false
+                GroomingCacheStore.saveReminders(getApplication(), reminders)
+                GroomingNotificationScheduler.rescheduleAll(getApplication(), reminders)
+                onComplete?.invoke()
+            }.onFailure { err ->
+                _isLoadingGrooming.value = false
+                _groomingError.value = err.message
+                val cached = GroomingCacheStore.getReminders(getApplication())
+                if (cached.isNotEmpty()) {
+                    _groomingReminders.value = cached
+                }
+                onComplete?.invoke()
+            }
+        }
+    }
+
+    fun createGroomingReminder(
+        petId: Int,
+        activity: String,
+        reminderDate: String,
+        reminderTime: String,
+        notificationEnabled: Boolean = true,
+        status: String = "Scheduled",
+        onDone: (Boolean, String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoadingGrooming.value = true
+            val request = CreateGroomingReminderRequest(
+                petId = petId,
+                activity = activity.trim(),
+                reminderDate = reminderDate.trim(),
+                reminderTime = reminderTime.trim(),
+                notificationEnabled = notificationEnabled,
+                status = status
+            )
+
+            repository.createGroomingReminder(request).onSuccess { newReminder ->
+                _isLoadingGrooming.value = false
+                _groomingReminders.value = listOf(newReminder) + _groomingReminders.value.filter { it.id != newReminder.id }
+                GroomingCacheStore.upsertReminder(getApplication(), newReminder)
+                if (newReminder.notificationEnabled && !newReminder.isCompleted) {
+                    GroomingNotificationScheduler.scheduleReminder(getApplication(), newReminder)
+                }
+                refreshDashboard()
+                onDone(true, null)
+            }.onFailure { err ->
+                _isLoadingGrooming.value = false
+                _groomingError.value = err.message
+                onDone(false, err.message ?: "Failed to save reminder")
+            }
+        }
+    }
+
+    fun updateGroomingReminder(
+        id: Int,
+        petId: Int,
+        activity: String,
+        reminderDate: String,
+        reminderTime: String,
+        notificationEnabled: Boolean = true,
+        status: String? = null,
+        onDone: (Boolean, String?) -> Unit
+    ) {
+        viewModelScope.launch {
+            _isLoadingGrooming.value = true
+            val request = UpdateGroomingReminderRequest(
+                petId = petId,
+                activity = activity.trim(),
+                reminderDate = reminderDate.trim(),
+                reminderTime = reminderTime.trim(),
+                notificationEnabled = notificationEnabled,
+                status = status
+            )
+
+            repository.updateGroomingReminder(id, request).onSuccess { updated ->
+                _isLoadingGrooming.value = false
+                _groomingReminders.value = _groomingReminders.value.map { if (it.id == id) updated else it }
+                GroomingCacheStore.upsertReminder(getApplication(), updated)
+                if (updated.notificationEnabled && !updated.isCompleted) {
+                    GroomingNotificationScheduler.scheduleReminder(getApplication(), updated)
+                } else {
+                    GroomingNotificationScheduler.cancelReminder(getApplication(), id)
+                }
+                refreshDashboard()
+                onDone(true, null)
+            }.onFailure { err ->
+                _isLoadingGrooming.value = false
+                _groomingError.value = err.message
+                onDone(false, err.message ?: "Failed to update reminder")
+            }
+        }
+    }
+
+    fun updateGroomingStatus(id: Int, newStatus: String, onDone: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            // Optimistic update
+            _groomingReminders.value = _groomingReminders.value.map {
+                if (it.id == id) it.copy(status = newStatus) else it
+            }
+            GroomingCacheStore.updateStatus(getApplication(), id, newStatus)
+
+            if (newStatus.equals("Completed", ignoreCase = true)) {
+                GroomingNotificationScheduler.cancelReminder(getApplication(), id)
+            }
+
+            repository.updateGroomingReminderStatus(id, newStatus).onSuccess { updated ->
+                _groomingReminders.value = _groomingReminders.value.map { if (it.id == id) updated else it }
+                GroomingCacheStore.upsertReminder(getApplication(), updated)
+                if (updated.notificationEnabled && !updated.isCompleted) {
+                    GroomingNotificationScheduler.scheduleReminder(getApplication(), updated)
+                }
+                refreshDashboard()
+                onDone?.invoke(true, null)
+            }.onFailure { err ->
+                loadGroomingReminders()
+                onDone?.invoke(false, err.message ?: "Failed to update status")
+            }
+        }
+    }
+
+    fun deleteGroomingReminder(id: Int, onDone: ((Boolean, String?) -> Unit)? = null) {
+        viewModelScope.launch {
+            GroomingNotificationScheduler.cancelReminder(getApplication(), id)
+            _groomingReminders.value = _groomingReminders.value.filter { it.id != id }
+            GroomingCacheStore.removeReminder(getApplication(), id)
+
+            repository.deleteGroomingReminder(id).onSuccess {
+                refreshDashboard()
+                onDone?.invoke(true, null)
+            }.onFailure { err ->
+                loadGroomingReminders()
+                onDone?.invoke(false, err.message ?: "Failed to delete reminder")
             }
         }
     }

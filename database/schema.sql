@@ -15,6 +15,7 @@ DROP TABLE IF EXISTS `grooming_guides`;
 DROP TABLE IF EXISTS `safe_toxic_foods`;
 DROP TABLE IF EXISTS `meal_schedules`;
 DROP TABLE IF EXISTS `meal_entries`;
+DROP TABLE IF EXISTS `grooming_reminders`;
 DROP TABLE IF EXISTS `care_reminders`;
 DROP TABLE IF EXISTS `weight_entries`;
 DROP TABLE IF EXISTS `pets`;
@@ -110,6 +111,24 @@ CREATE TABLE `care_reminders` (
     FOREIGN KEY (`pet_id`) REFERENCES `pets`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
     INDEX `idx_reminders_user_pet` (`user_id`, `pet_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 6b. Grooming Calendar Reminders
+CREATE TABLE `grooming_reminders` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `user_id` INT UNSIGNED NOT NULL,
+    `pet_id` INT UNSIGNED NOT NULL,
+    `activity` VARCHAR(100) NOT NULL,
+    `reminder_date` VARCHAR(30) NOT NULL,
+    `reminder_time` VARCHAR(20) NOT NULL,
+    `notification_enabled` TINYINT(1) NOT NULL DEFAULT 1,
+    `status` VARCHAR(20) NOT NULL DEFAULT 'Scheduled', -- 'Scheduled' or 'Completed'
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`pet_id`) REFERENCES `pets`(`id`) ON DELETE CASCADE,
+    INDEX `idx_grooming_user_pet` (`user_id`, `pet_id`),
+    INDEX `idx_grooming_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 7. Logged Meal Entries

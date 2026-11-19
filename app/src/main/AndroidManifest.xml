@@ -66,6 +66,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Grooming Reminder Receiver -->
+        <receiver
+            android:name=".notifications.GroomingReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.kavya.petcare.ACTION_GROOMING_REMINDER" />
+            </intent-filter>
+        </receiver>
+
         <!-- Restore Alarms on Device Boot / Time Zone Change -->
         <receiver
             android:name=".notifications.MealBootReceiver"

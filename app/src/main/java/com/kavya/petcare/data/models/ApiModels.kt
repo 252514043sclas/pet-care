@@ -284,6 +284,47 @@ data class CalendarTaskDto(
     @SerializedName("is_completed") val isCompleted: Boolean = false
 )
 
+// Dynamic Grooming Calendar Reminders
+data class GroomingReminderDto(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("user_id") val userId: Int = 0,
+    @SerializedName("pet_id") val petId: Int = 0,
+    @SerializedName("pet_name") val petName: String = "Pet",
+    @SerializedName("pet_species") val petSpecies: String = "Dog",
+    @SerializedName("activity") val activity: String = "",
+    @SerializedName("reminder_date") val reminderDate: String = "",
+    @SerializedName("reminder_time") val reminderTime: String = "",
+    @SerializedName("notification_enabled") val notificationEnabled: Boolean = true,
+    @SerializedName("status") val status: String = "Scheduled", // "Scheduled" or "Completed"
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
+) {
+    val isCompleted: Boolean
+        get() = status.equals("Completed", ignoreCase = true)
+}
+
+data class CreateGroomingReminderRequest(
+    @SerializedName("pet_id") val petId: Int,
+    @SerializedName("activity") val activity: String,
+    @SerializedName("reminder_date") val reminderDate: String,
+    @SerializedName("reminder_time") val reminderTime: String,
+    @SerializedName("notification_enabled") val notificationEnabled: Boolean = true,
+    @SerializedName("status") val status: String = "Scheduled"
+)
+
+data class UpdateGroomingReminderRequest(
+    @SerializedName("pet_id") val petId: Int,
+    @SerializedName("activity") val activity: String,
+    @SerializedName("reminder_date") val reminderDate: String,
+    @SerializedName("reminder_time") val reminderTime: String,
+    @SerializedName("notification_enabled") val notificationEnabled: Boolean = true,
+    @SerializedName("status") val status: String? = null
+)
+
+data class UpdateGroomingStatusRequest(
+    @SerializedName("status") val status: String
+)
+
 data class GroomingGuideDto(
     @SerializedName("id") val id: Int,
     @SerializedName("title") val title: String,

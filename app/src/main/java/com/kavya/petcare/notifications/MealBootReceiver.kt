@@ -40,6 +40,13 @@ class MealBootReceiver : BroadcastReceiver() {
                     )
                 }
             }
+
+            // Restore grooming calendar reminders
+            val groomingReminders = com.kavya.petcare.data.local.GroomingCacheStore.getReminders(context)
+            if (groomingReminders.isNotEmpty()) {
+                Log.d(TAG, "Restoring ${groomingReminders.size} grooming reminders")
+                GroomingNotificationScheduler.rescheduleAll(context, groomingReminders)
+            }
         }
     }
 }

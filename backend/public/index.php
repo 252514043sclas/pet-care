@@ -28,6 +28,7 @@ use App\Controllers\DashboardController;
 use App\Controllers\DietController;
 use App\Controllers\HealthController;
 use App\Controllers\ReminderController;
+use App\Controllers\GroomingController;
 use App\Controllers\PreferenceController;
 use App\Controllers\SupportController;
 use App\Utils\Response;
@@ -270,6 +271,31 @@ try {
 
     if ($requestMethod === 'GET' && $uri === '/api/reminders/calendar') {
         (new ReminderController())->calendar($user);
+    }
+
+    // Dynamic Grooming Calendar Reminders
+    if ($requestMethod === 'GET' && $uri === '/api/grooming/reminders') {
+        (new GroomingController())->index($user);
+    }
+
+    if ($requestMethod === 'POST' && $uri === '/api/grooming/reminders') {
+        (new GroomingController())->store($user, $input);
+    }
+
+    if ($requestMethod === 'GET' && preg_match('#^/api/grooming/reminders/(\d+)$#', $uri, $matches)) {
+        (new GroomingController())->show($user, (int)$matches[1]);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST' || $requestMethod === 'PATCH') && preg_match('#^/api/grooming/reminders/(\d+)$#', $uri, $matches)) {
+        (new GroomingController())->update($user, (int)$matches[1], $input);
+    }
+
+    if (($requestMethod === 'PATCH' || $requestMethod === 'PUT' || $requestMethod === 'POST') && preg_match('#^/api/grooming/reminders/(\d+)/status$#', $uri, $matches)) {
+        (new GroomingController())->updateStatus($user, (int)$matches[1], $input);
+    }
+
+    if ($requestMethod === 'DELETE' && preg_match('#^/api/grooming/reminders/(\d+)$#', $uri, $matches)) {
+        (new GroomingController())->destroy($user, (int)$matches[1]);
     }
 
     // Route not found

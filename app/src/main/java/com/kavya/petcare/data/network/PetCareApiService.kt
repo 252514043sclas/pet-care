@@ -195,6 +195,40 @@ interface PetCareApiService {
     @GET("reminders/calendar")
     suspend fun getCalendarSchedule(): Response<ApiResponse<List<CalendarTaskDto>>>
 
+    // Dynamic Grooming Reminders
+    @GET("grooming/reminders")
+    suspend fun getGroomingReminders(
+        @Query("pet_id") petId: Int? = null,
+        @Query("status") status: String? = null
+    ): Response<ApiResponse<List<GroomingReminderDto>>>
+
+    @POST("grooming/reminders")
+    suspend fun createGroomingReminder(
+        @Body request: CreateGroomingReminderRequest
+    ): Response<ApiResponse<GroomingReminderDto>>
+
+    @GET("grooming/reminders/{id}")
+    suspend fun getGroomingReminderById(
+        @Path("id") id: Int
+    ): Response<ApiResponse<GroomingReminderDto>>
+
+    @PUT("grooming/reminders/{id}")
+    suspend fun updateGroomingReminder(
+        @Path("id") id: Int,
+        @Body request: UpdateGroomingReminderRequest
+    ): Response<ApiResponse<GroomingReminderDto>>
+
+    @PATCH("grooming/reminders/{id}/status")
+    suspend fun updateGroomingReminderStatus(
+        @Path("id") id: Int,
+        @Body request: UpdateGroomingStatusRequest
+    ): Response<ApiResponse<GroomingReminderDto>>
+
+    @DELETE("grooming/reminders/{id}")
+    suspend fun deleteGroomingReminder(
+        @Path("id") id: Int
+    ): Response<ApiResponse<Map<String, Any>>>
+
     @GET("grooming/guides")
     suspend fun getGroomingGuides(): Response<ApiResponse<List<GroomingGuideDto>>>
 

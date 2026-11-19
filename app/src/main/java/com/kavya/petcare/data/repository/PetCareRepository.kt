@@ -823,6 +823,94 @@ class PetCareRepository(private val context: Context) {
             Result.failure(Exception(formatNetworkError(e)))
         }
     }
+
+    // ----------------------------------------------------
+    // Dynamic Grooming Calendar Reminders
+    // ----------------------------------------------------
+    suspend fun getGroomingReminders(petId: Int? = null, status: String? = null): Result<List<GroomingReminderDto>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getGroomingReminders(petId = petId, status = status)
+            if (response.isSuccessful && response.body()?.success == true) {
+                val data = response.body()!!.data ?: emptyList()
+                Result.success(data)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to load grooming reminders")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun createGroomingReminder(request: CreateGroomingReminderRequest): Result<GroomingReminderDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.createGroomingReminder(request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to create grooming reminder")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getGroomingReminderById(id: Int): Result<GroomingReminderDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getGroomingReminderById(id)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to fetch grooming reminder")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updateGroomingReminder(id: Int, request: UpdateGroomingReminderRequest): Result<GroomingReminderDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updateGroomingReminder(id, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update grooming reminder")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updateGroomingReminderStatus(id: Int, status: String): Result<GroomingReminderDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updateGroomingReminderStatus(id, UpdateGroomingStatusRequest(status = status))
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update status")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deleteGroomingReminder(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteGroomingReminder(id)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to delete grooming reminder")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
 }
 
 
