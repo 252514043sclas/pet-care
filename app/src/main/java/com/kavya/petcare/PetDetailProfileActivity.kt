@@ -67,6 +67,13 @@ class PetDetailProfileActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        val vm = PetViewModel.getShared(this)
+        vm.loadHealthScore()
+        vm.loadVaccinations()
+    }
 }
 
 @Composable
@@ -608,19 +615,44 @@ fun PetDetailProfileScreen(
                     .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                val healthDisplayValue = if (activePet.healthScore > 0) {
+                    "${activePet.healthScore}/100"
+                } else {
+                    "No data"
+                }
+
                 PetStatPill(
                     label = "Health",
-                    value = "${activePet.healthScore}/100",
+                    value = healthDisplayValue,
                     icon = Icons.Default.Favorite,
                     tintColor = AlertRose,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        context.startActivity(Intent(context, HealthScoreDetailActivity::class.java))
+                    }
                 )
+
+                val vaccineDisplayValue = if (activePet.vaccinationStatus.isNotBlank()) {
+                    activePet.vaccinationStatus
+                } else {
+                    "No Records"
+                }
+
+                val vaccineTint = when (vaccineDisplayValue.uppercase()) {
+                    "OVERDUE" -> AlertRose
+                    "DUE SOON" -> AmberAccent
+                    else -> MintSage
+                }
+
                 PetStatPill(
                     label = "Vaccine",
-                    value = activePet.vaccinationStatus,
+                    value = vaccineDisplayValue,
                     icon = Icons.Default.Shield,
-                    tintColor = MintSage,
-                    modifier = Modifier.weight(1f)
+                    tintColor = vaccineTint,
+                    modifier = Modifier.weight(1f),
+                    onClick = {
+                        context.startActivity(Intent(context, VaccinationDetailActivity::class.java))
+                    }
                 )
             }
 

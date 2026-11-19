@@ -190,6 +190,20 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     private val _groomingError = MutableStateFlow<String?>(null)
     val groomingError: StateFlow<String?> = _groomingError.asStateFlow()
 
+    // Dynamic Pet Health Score & Records
+    private val _healthScoreOverview = MutableStateFlow<PetHealthScoreOverviewDto?>(null)
+    val healthScoreOverview: StateFlow<PetHealthScoreOverviewDto?> = _healthScoreOverview.asStateFlow()
+
+    private val _isLoadingHealthScore = MutableStateFlow<Boolean>(false)
+    val isLoadingHealthScore: StateFlow<Boolean> = _isLoadingHealthScore.asStateFlow()
+
+    // Dynamic Pet Vaccinations
+    private val _vaccinationOverview = MutableStateFlow<VaccinationOverviewDto?>(null)
+    val vaccinationOverview: StateFlow<VaccinationOverviewDto?> = _vaccinationOverview.asStateFlow()
+
+    private val _isLoadingVaccines = MutableStateFlow<Boolean>(false)
+    val isLoadingVaccines: StateFlow<Boolean> = _isLoadingVaccines.asStateFlow()
+
     init {
         // Hydrate grooming reminders from cache for immediate instant load
         val cachedGrooming = GroomingCacheStore.getReminders(getApplication())
@@ -210,6 +224,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         loadDietSummary()
         loadWeightHistory()
         loadMealHistory()
+        loadHealthScore()
+        loadVaccinations()
     }
 
     // ----------------------------------------------------
@@ -462,6 +478,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             loadAllPets()
             loadWeightHistory(p.id)
             loadMealHistory(p.id)
+            loadHealthScore(p.id)
+            loadVaccinations(p.id)
         }
     }
 
@@ -1448,6 +1466,155 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                 if (guides.isNotEmpty()) {
                     _groomingGuides.value = guides
                 }
+            }
+        }
+    }
+
+    // ----------------------------------------------------
+    // Dynamic Pet Health Score Operations
+    // ----------------------------------------------------
+    fun loadHealthScore(petId: Int? = null, onDone: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            _isLoadingHealthScore.value = true
+            val targetPetId = petId ?: _activePet.value.id.toIntOrNull()?.takeIf { it > 0 } ?: session.getActivePetId()
+            if (targetPetId <= 0) {
+                _isLoadingHealthScore.value = false
+                onDone?.invoke()
+                return@launch
+            }
+
+            repository.getPetHealthScore(targetPetId).onSuccess { overview ->
+                _healthScoreOverview.value = overview
+                _isLoadingHealthScore.value = false
+                val computedScore = overview.score ?: -1
+                _activePet.value = _activePet.value.copy(healthScore = computedScore)
+                session.setActivePetHealthScore(computedScore)
+                onDone?.invoke()
+            }.onFailure {
+                _isLoadingHealthScore.value = false
+                onDone?.invoke()
+            }
+        }
+    }
+
+    fun addHealthRecord(petId: Int, request: CreateHealthRecordRequest, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isLoadingHealthScore.value = true
+            repository.addPetHealthRecord(petId, request).onSuccess {
+                loadHealthScore(petId) {
+                    refreshDashboard()
+                    _isLoadingHealthScore.value = false
+                    onDone(true, null)
+                }
+            }.onFailure { err ->
+                _isLoadingHealthScore.value = false
+                onDone(false, err.message ?: "Failed to add health record")
+            }
+        }
+    }
+
+    fun updateHealthRecord(petId: Int, recordId: Int, request: CreateHealthRecordRequest, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isLoadingHealthScore.value = true
+            repository.updatePetHealthRecord(petId, recordId, request).onSuccess {
+                loadHealthScore(petId) {
+                    refreshDashboard()
+                    _isLoadingHealthScore.value = false
+                    onDone(true, null)
+                }
+            }.onFailure { err ->
+                _isLoadingHealthScore.value = false
+                onDone(false, err.message ?: "Failed to update health record")
+            }
+        }
+    }
+
+    fun deleteHealthRecord(petId: Int, recordId: Int, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isLoadingHealthScore.value = true
+            repository.deletePetHealthRecord(petId, recordId).onSuccess {
+                loadHealthScore(petId) {
+                    refreshDashboard()
+                    _isLoadingHealthScore.value = false
+                    onDone(true, null)
+                }
+            }.onFailure { err ->
+                _isLoadingHealthScore.value = false
+                onDone(false, err.message ?: "Failed to delete health record")
+            }
+        }
+    }
+
+    // ----------------------------------------------------
+    // Dynamic Pet Vaccination Operations
+    // ----------------------------------------------------
+    fun loadVaccinations(petId: Int? = null, onDone: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            _isLoadingVaccines.value = true
+            val targetPetId = petId ?: _activePet.value.id.toIntOrNull()?.takeIf { it > 0 } ?: session.getActivePetId()
+            if (targetPetId <= 0) {
+                _isLoadingVaccines.value = false
+                onDone?.invoke()
+                return@launch
+            }
+
+            repository.getPetVaccinations(targetPetId).onSuccess { overview ->
+                _vaccinationOverview.value = overview
+                _isLoadingVaccines.value = false
+                _activePet.value = _activePet.value.copy(vaccinationStatus = overview.overallStatus)
+                session.setActivePetVaccinationStatus(overview.overallStatus)
+                onDone?.invoke()
+            }.onFailure {
+                _isLoadingVaccines.value = false
+                onDone?.invoke()
+            }
+        }
+    }
+
+    fun addVaccination(petId: Int, request: CreateVaccinationRequest, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isLoadingVaccines.value = true
+            repository.addPetVaccination(petId, request).onSuccess {
+                loadVaccinations(petId)
+                loadHealthScore(petId)
+                refreshDashboard()
+                _isLoadingVaccines.value = false
+                onDone(true, null)
+            }.onFailure { err ->
+                _isLoadingVaccines.value = false
+                onDone(false, err.message ?: "Failed to add vaccination record")
+            }
+        }
+    }
+
+    fun updateVaccination(petId: Int, vaccineId: Int, request: CreateVaccinationRequest, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isLoadingVaccines.value = true
+            repository.updatePetVaccination(petId, vaccineId, request).onSuccess {
+                loadVaccinations(petId)
+                loadHealthScore(petId)
+                refreshDashboard()
+                _isLoadingVaccines.value = false
+                onDone(true, null)
+            }.onFailure { err ->
+                _isLoadingVaccines.value = false
+                onDone(false, err.message ?: "Failed to update vaccination record")
+            }
+        }
+    }
+
+    fun deleteVaccination(petId: Int, vaccineId: Int, onDone: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            _isLoadingVaccines.value = true
+            repository.deletePetVaccination(petId, vaccineId).onSuccess {
+                loadVaccinations(petId)
+                loadHealthScore(petId)
+                refreshDashboard()
+                _isLoadingVaccines.value = false
+                onDone(true, null)
+            }.onFailure { err ->
+                _isLoadingVaccines.value = false
+                onDone(false, err.message ?: "Failed to delete vaccination record")
             }
         }
     }

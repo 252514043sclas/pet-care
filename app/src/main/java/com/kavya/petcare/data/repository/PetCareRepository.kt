@@ -911,6 +911,138 @@ class PetCareRepository(private val context: Context) {
             Result.failure(Exception(formatNetworkError(e)))
         }
     }
+
+    // ----------------------------------------------------
+    // Dynamic Pet Health Score & Health Records
+    // ----------------------------------------------------
+    suspend fun getPetHealthScore(petId: Int): Result<PetHealthScoreOverviewDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getPetHealthScore(petId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data ?: PetHealthScoreOverviewDto())
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to fetch health score")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getPetHealthRecords(petId: Int): Result<List<PetHealthRecordDto>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getPetHealthRecords(petId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data ?: emptyList())
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to fetch health records")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun addPetHealthRecord(petId: Int, request: CreateHealthRecordRequest): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.addPetHealthRecord(petId, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to add health record")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updatePetHealthRecord(petId: Int, recordId: Int, request: CreateHealthRecordRequest): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updatePetHealthRecord(petId, recordId, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update health record")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deletePetHealthRecord(petId: Int, recordId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deletePetHealthRecord(petId, recordId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to delete health record")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    // ----------------------------------------------------
+    // Dynamic Pet Vaccinations
+    // ----------------------------------------------------
+    suspend fun getPetVaccinations(petId: Int): Result<VaccinationOverviewDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getPetVaccinations(petId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(response.body()!!.data ?: VaccinationOverviewDto())
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to fetch vaccination records")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun addPetVaccination(petId: Int, request: CreateVaccinationRequest): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.addPetVaccination(petId, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to add vaccination")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun updatePetVaccination(petId: Int, vaccineId: Int, request: CreateVaccinationRequest): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.updatePetVaccination(petId, vaccineId, request)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Failed to update vaccination")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deletePetVaccination(petId: Int, vaccineId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deletePetVaccination(petId, vaccineId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to delete vaccination")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
 }
 
 

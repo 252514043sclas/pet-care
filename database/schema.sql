@@ -199,6 +199,45 @@ CREATE TABLE `health_scans` (
     INDEX `idx_scans_pet` (`pet_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 10b. Pet Health Records (Checkups, Vet Visits, Symptoms, Medical History)
+CREATE TABLE IF NOT EXISTS `pet_health_records` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `pet_id` INT UNSIGNED NOT NULL,
+    `user_id` INT UNSIGNED NOT NULL,
+    `record_type` VARCHAR(50) NOT NULL DEFAULT 'Checkup', -- 'Checkup', 'Symptom', 'Vet Visit', 'Medication', 'Surgery', 'General'
+    `title` VARCHAR(150) NOT NULL,
+    `description` TEXT NULL,
+    `severity` VARCHAR(30) NOT NULL DEFAULT 'Normal', -- 'Normal', 'Mild', 'Moderate', 'Severe'
+    `recorded_date` VARCHAR(30) NOT NULL,
+    `vet_name` VARCHAR(100) NULL,
+    `notes` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`pet_id`) REFERENCES `pets`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_health_records_pet` (`pet_id`),
+    INDEX `idx_health_records_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 10c. Pet Vaccination Records
+CREATE TABLE IF NOT EXISTS `pet_vaccinations` (
+    `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `pet_id` INT UNSIGNED NOT NULL,
+    `user_id` INT UNSIGNED NOT NULL,
+    `vaccine_name` VARCHAR(150) NOT NULL,
+    `vaccination_date` VARCHAR(30) NOT NULL,
+    `next_due_date` VARCHAR(30) NOT NULL,
+    `batch_number` VARCHAR(100) NULL,
+    `clinic_name` VARCHAR(150) NULL,
+    `notes` TEXT NULL,
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`pet_id`) REFERENCES `pets`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+    INDEX `idx_vaccinations_pet` (`pet_id`),
+    INDEX `idx_vaccinations_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 11. Disease & Condition Guides
 CREATE TABLE `disease_guides` (
     `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

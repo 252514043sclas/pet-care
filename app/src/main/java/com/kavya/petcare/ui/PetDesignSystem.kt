@@ -393,10 +393,11 @@ fun PetStatPill(
     value: String,
     icon: ImageVector? = null,
     tintColor: Color = MintSage,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Surface(
-        modifier = modifier,
+        modifier = if (onClick != null) modifier.clickable { onClick() } else modifier,
         shape = RoundedCornerShape(16.dp),
         color = tintColor.copy(alpha = 0.12f)
     ) {

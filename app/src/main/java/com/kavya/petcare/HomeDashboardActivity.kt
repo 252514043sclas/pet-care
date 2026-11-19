@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1123,6 +1124,7 @@ fun ProfileTabScreen(
     onNavigateProfile: () -> Unit,
     onNavigateSettings: () -> Unit
 ) {
+    val context = LocalContext.current
     val activePet by viewModel.activePet.collectAsState()
 
     Column(
@@ -1183,12 +1185,25 @@ fun ProfileTabScreen(
                     Text(activePet.weight, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
                 }
                 HorizontalDivider(color = BorderSubtle)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { context.startActivity(Intent(context, HealthScoreDetailActivity::class.java)) },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text("Health Score", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Text("${activePet.healthScore} / 100", fontWeight = FontWeight.Bold, color = MintSage, fontSize = 15.sp)
+                    val scoreText = if (activePet.healthScore > 0) "${activePet.healthScore} / 100" else "No data"
+                    Text(scoreText, fontWeight = FontWeight.Bold, color = MintSage, fontSize = 15.sp)
                 }
                 HorizontalDivider(color = BorderSubtle)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { context.startActivity(Intent(context, VaccinationDetailActivity::class.java)) },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text("Vaccination Status", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Text(activePet.vaccinationStatus, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
                 }

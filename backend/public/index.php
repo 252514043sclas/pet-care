@@ -27,6 +27,7 @@ use App\Controllers\PetController;
 use App\Controllers\DashboardController;
 use App\Controllers\DietController;
 use App\Controllers\HealthController;
+use App\Controllers\PetHealthController;
 use App\Controllers\ReminderController;
 use App\Controllers\GroomingController;
 use App\Controllers\PreferenceController;
@@ -254,6 +255,44 @@ try {
 
     if ($requestMethod === 'GET' && $uri === '/api/health/reports') {
         (new HealthController())->savedReports($user);
+    }
+
+    // Pet Dynamic Health Score & Health Records
+    if ($requestMethod === 'GET' && preg_match('#^/api/pets/(\d+)/health-score$#', $uri, $matches)) {
+        (new PetHealthController())->getHealthScore($user, (int)$matches[1]);
+    }
+
+    if ($requestMethod === 'GET' && preg_match('#^/api/pets/(\d+)/health-records$#', $uri, $matches)) {
+        (new PetHealthController())->getHealthRecords($user, (int)$matches[1]);
+    }
+
+    if ($requestMethod === 'POST' && preg_match('#^/api/pets/(\d+)/health-records$#', $uri, $matches)) {
+        (new PetHealthController())->addHealthRecord($user, (int)$matches[1], $input);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST' || $requestMethod === 'PATCH') && preg_match('#^/api/pets/(\d+)/health-records/(\d+)$#', $uri, $matches)) {
+        (new PetHealthController())->updateHealthRecord($user, (int)$matches[1], (int)$matches[2], $input);
+    }
+
+    if ($requestMethod === 'DELETE' && preg_match('#^/api/pets/(\d+)/health-records/(\d+)$#', $uri, $matches)) {
+        (new PetHealthController())->deleteHealthRecord($user, (int)$matches[1], (int)$matches[2]);
+    }
+
+    // Pet Dynamic Vaccinations & Vaccine Status
+    if ($requestMethod === 'GET' && preg_match('#^/api/pets/(\d+)/vaccinations$#', $uri, $matches)) {
+        (new PetHealthController())->getVaccinations($user, (int)$matches[1]);
+    }
+
+    if ($requestMethod === 'POST' && preg_match('#^/api/pets/(\d+)/vaccinations$#', $uri, $matches)) {
+        (new PetHealthController())->addVaccination($user, (int)$matches[1], $input);
+    }
+
+    if (($requestMethod === 'PUT' || $requestMethod === 'POST' || $requestMethod === 'PATCH') && preg_match('#^/api/pets/(\d+)/vaccinations/(\d+)$#', $uri, $matches)) {
+        (new PetHealthController())->updateVaccination($user, (int)$matches[1], (int)$matches[2], $input);
+    }
+
+    if ($requestMethod === 'DELETE' && preg_match('#^/api/pets/(\d+)/vaccinations/(\d+)$#', $uri, $matches)) {
+        (new PetHealthController())->deleteVaccination($user, (int)$matches[1], (int)$matches[2]);
     }
 
     // Reminders & Grooming

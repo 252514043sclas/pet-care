@@ -257,6 +257,65 @@ interface PetCareApiService {
     ): Response<ApiResponse<Map<String, Any>>>
 
     // ----------------------------------------------------
+    // Dynamic Pet Health Score & Health Records
+    // ----------------------------------------------------
+    @GET("pets/{id}/health-score")
+    suspend fun getPetHealthScore(
+        @Path("id") petId: Int
+    ): Response<ApiResponse<PetHealthScoreOverviewDto>>
+
+    @GET("pets/{id}/health-records")
+    suspend fun getPetHealthRecords(
+        @Path("id") petId: Int
+    ): Response<ApiResponse<List<PetHealthRecordDto>>>
+
+    @POST("pets/{id}/health-records")
+    suspend fun addPetHealthRecord(
+        @Path("id") petId: Int,
+        @Body request: CreateHealthRecordRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @PUT("pets/{id}/health-records/{recordId}")
+    suspend fun updatePetHealthRecord(
+        @Path("id") petId: Int,
+        @Path("recordId") recordId: Int,
+        @Body request: CreateHealthRecordRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @DELETE("pets/{id}/health-records/{recordId}")
+    suspend fun deletePetHealthRecord(
+        @Path("id") petId: Int,
+        @Path("recordId") recordId: Int
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    // ----------------------------------------------------
+    // Dynamic Pet Vaccinations
+    // ----------------------------------------------------
+    @GET("pets/{id}/vaccinations")
+    suspend fun getPetVaccinations(
+        @Path("id") petId: Int
+    ): Response<ApiResponse<VaccinationOverviewDto>>
+
+    @POST("pets/{id}/vaccinations")
+    suspend fun addPetVaccination(
+        @Path("id") petId: Int,
+        @Body request: CreateVaccinationRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @PUT("pets/{id}/vaccinations/{vaccineId}")
+    suspend fun updatePetVaccination(
+        @Path("id") petId: Int,
+        @Path("vaccineId") vaccineId: Int,
+        @Body request: CreateVaccinationRequest
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @DELETE("pets/{id}/vaccinations/{vaccineId}")
+    suspend fun deletePetVaccination(
+        @Path("id") petId: Int,
+        @Path("vaccineId") vaccineId: Int
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    // ----------------------------------------------------
     // User Preferences & Support
     // ----------------------------------------------------
     @GET("user/preferences")

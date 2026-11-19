@@ -415,3 +415,80 @@ data class UploadPhotoDto(
     @SerializedName("pet") val pet: PetDto? = null
 )
 
+// ----------------------------------------------------
+// Pet Health Records & Dynamic Wellness Scoring
+// ----------------------------------------------------
+data class PetHealthRecordDto(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("pet_id") val petId: Int = 0,
+    @SerializedName("record_type") val recordType: String = "Checkup", // Checkup, Symptom, Vet Visit, Medication, Surgery, General
+    @SerializedName("title") val title: String = "",
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("severity") val severity: String = "Normal", // Normal, Mild, Moderate, Severe
+    @SerializedName("recorded_date") val recordedDate: String = "",
+    @SerializedName("vet_name") val vetName: String? = null,
+    @SerializedName("notes") val notes: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
+)
+
+data class CreateHealthRecordRequest(
+    @SerializedName("record_type") val recordType: String = "Checkup",
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String? = null,
+    @SerializedName("severity") val severity: String = "Normal",
+    @SerializedName("recorded_date") val recordedDate: String,
+    @SerializedName("vet_name") val vetName: String? = null,
+    @SerializedName("notes") val notes: String? = null
+)
+
+data class HealthScoreFactorDto(
+    @SerializedName("factor") val factor: String = "",
+    @SerializedName("impact") val impact: Int = 0,
+    @SerializedName("description") val description: String = ""
+)
+
+data class PetHealthScoreOverviewDto(
+    @SerializedName("score") val score: Int? = null,
+    @SerializedName("has_sufficient_data") val hasSufficientData: Boolean = false,
+    @SerializedName("status_label") val statusLabel: String = "Not enough health data",
+    @SerializedName("total_records") val totalRecords: Int = 0,
+    @SerializedName("breakdown") val breakdown: List<HealthScoreFactorDto> = emptyList(),
+    @SerializedName("health_records") val healthRecords: List<PetHealthRecordDto> = emptyList(),
+    @SerializedName("recent_scans") val recentScans: List<HealthScanResultDto> = emptyList()
+)
+
+// ----------------------------------------------------
+// Pet Vaccinations & Status
+// ----------------------------------------------------
+data class PetVaccinationDto(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("pet_id") val petId: Int = 0,
+    @SerializedName("vaccine_name") val vaccineName: String = "",
+    @SerializedName("vaccination_date") val vaccinationDate: String = "",
+    @SerializedName("next_due_date") val nextDueDate: String = "",
+    @SerializedName("batch_number") val batchNumber: String? = null,
+    @SerializedName("clinic_name") val clinicName: String? = null,
+    @SerializedName("notes") val notes: String? = null,
+    @SerializedName("status") val status: String = "UP TO DATE", // UP TO DATE, DUE SOON, OVERDUE
+    @SerializedName("days_until_due") val daysUntilDue: Int = 0,
+    @SerializedName("due_description") val dueDescription: String = "",
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
+)
+
+data class CreateVaccinationRequest(
+    @SerializedName("vaccine_name") val vaccineName: String,
+    @SerializedName("vaccination_date") val vaccinationDate: String,
+    @SerializedName("next_due_date") val nextDueDate: String,
+    @SerializedName("batch_number") val batchNumber: String? = null,
+    @SerializedName("clinic_name") val clinicName: String? = null,
+    @SerializedName("notes") val notes: String? = null
+)
+
+data class VaccinationOverviewDto(
+    @SerializedName("overall_status") val overallStatus: String = "NO RECORDS",
+    @SerializedName("total_vaccines") val totalVaccines: Int = 0,
+    @SerializedName("vaccinations") val vaccinations: List<PetVaccinationDto> = emptyList()
+)
+

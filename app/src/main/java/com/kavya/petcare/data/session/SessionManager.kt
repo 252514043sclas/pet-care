@@ -108,6 +108,14 @@ class SessionManager private constructor(context: Context) {
         prefs.edit().putString(KEY_ACTIVE_PET_IMAGE_URL, url).apply()
     }
 
+    fun setActivePetHealthScore(score: Int) {
+        prefs.edit().putInt(KEY_ACTIVE_PET_HEALTH_SCORE, score).apply()
+    }
+
+    fun setActivePetVaccinationStatus(status: String) {
+        prefs.edit().putString(KEY_ACTIVE_PET_VACCINATION, status).apply()
+    }
+
     fun setActivePetType(type: String) {
         prefs.edit().putString(KEY_ACTIVE_PET_TYPE, type).apply()
     }

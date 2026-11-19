@@ -56,6 +56,8 @@
         <activity android:name=".GroomingCalendarActivity" android:exported="false" />
         <activity android:name=".GroomingGuideActivity" android:exported="false" />
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".HealthScoreDetailActivity" android:exported="false" />
+        <activity android:name=".VaccinationDetailActivity" android:exported="false" />
 
         <!-- Feeding Schedule Meal Reminder Receiver -->
         <receiver

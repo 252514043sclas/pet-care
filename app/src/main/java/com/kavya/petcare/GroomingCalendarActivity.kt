@@ -172,7 +172,7 @@ fun GroomingCalendarScreen(
             // Error banner if any
             if (errorMessage != null && reminders.isEmpty()) {
                 Surface(
-                    color = CoralSoft,
+                    color = AlertRoseSoft,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -184,17 +184,17 @@ fun GroomingCalendarScreen(
                         Icon(
                             imageVector = Icons.Default.ErrorOutline,
                             contentDescription = null,
-                            tint = CoralAlert,
+                            tint = AlertRose,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = errorMessage ?: "",
                             style = MaterialTheme.typography.bodySmall,
-                            color = CoralAlert,
+                            color = AlertRose,
                             modifier = Modifier.weight(1f)
                         )
                         TextButton(onClick = { viewModel.loadGroomingReminders() }) {
-                            Text("Retry", color = CoralAlert, fontWeight = FontWeight.Bold)
+                            Text("Retry", color = AlertRose, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -362,7 +362,7 @@ fun GroomingCalendarScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = CoralAlert,
+                        containerColor = AlertRose,
                         contentColor = WarmPearl
                     ),
                     shape = RoundedCornerShape(10.dp)
@@ -583,7 +583,7 @@ private fun GroomingReminderCard(
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
                             contentDescription = "Delete Reminder",
-                            tint = CoralAlert,
+                            tint = AlertRose,
                             modifier = Modifier.size(20.dp)
                         )
                     }
