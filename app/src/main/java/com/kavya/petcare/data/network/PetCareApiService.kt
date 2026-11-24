@@ -330,5 +330,42 @@ interface PetCareApiService {
     suspend fun submitSupportReport(
         @Body request: SupportReportRequest
     ): Response<ApiResponse<SupportTicketDto>>
+
+    // ----------------------------------------------------
+    // AI Chatbot & Multimodal Vision (Qwen3-VL 2B)
+    // ----------------------------------------------------
+    @POST("chat")
+    suspend fun sendChatMessage(
+        @Body request: ChatRequest
+    ): Response<ApiResponse<ChatResponseDto>>
+
+    @POST("chat/image")
+    suspend fun sendChatImageAnalysis(
+        @Body request: ChatImageRequest
+    ): Response<ApiResponse<ChatImageResponseDto>>
+
+    @POST("nutrition")
+    suspend fun getNutritionGuidance(
+        @Body request: NutritionRequest
+    ): Response<ApiResponse<NutritionResponseDto>>
+
+    @POST("search")
+    suspend fun searchVeterinary(
+        @Body request: SearchRequest
+    ): Response<ApiResponse<SearchResponseDto>>
+
+    @GET("chat/history")
+    suspend fun getChatHistory(
+        @Query("pet_id") petId: Int? = null,
+        @Query("limit") limit: Int = 50
+    ): Response<ApiResponse<List<ChatMessageDto>>>
+
+    @DELETE("chat/history")
+    suspend fun clearChatHistory(
+        @Query("pet_id") petId: Int? = null
+    ): Response<ApiResponse<Map<String, Any>>>
+
+    @GET("health")
+    suspend fun getSystemHealth(): Response<ApiResponse<SystemHealthDto>>
 }
 

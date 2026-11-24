@@ -1043,6 +1043,126 @@ class PetCareRepository(private val context: Context) {
             Result.failure(Exception(formatNetworkError(e)))
         }
     }
+
+    // ----------------------------------------------------
+    // AI Chatbot & Multimodal Vision (Qwen3-VL 2B)
+    // ----------------------------------------------------
+    suspend fun sendChatMessage(
+        message: String,
+        petId: Int?,
+        enableSearch: Boolean = true
+    ): Result<ChatResponseDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.sendChatMessage(ChatRequest(message = message, petId = petId, enableSearch = enableSearch))
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to generate AI response")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun sendChatImage(
+        imageBase64: String,
+        prompt: String,
+        petId: Int?
+    ): Result<ChatImageResponseDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.sendChatImageAnalysis(ChatImageRequest(imageBase64 = imageBase64, prompt = prompt, petId = petId))
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "AI image analysis failed")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getNutritionGuidance(
+        query: String,
+        petId: Int?
+    ): Result<NutritionResponseDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getNutritionGuidance(NutritionRequest(query = query, petId = petId))
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Failed to retrieve nutrition plan")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun searchVeterinary(
+        query: String,
+        maxResults: Int = 4
+    ): Result<SearchResponseDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.searchVeterinary(SearchRequest(query = query, maxResults = maxResults))
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Search failed")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getChatHistory(
+        petId: Int?,
+        limit: Int = 50
+    ): Result<List<ChatMessageDto>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getChatHistory(petId = petId, limit = limit)
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Could not load chat history")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun clearChatHistory(
+        petId: Int?
+    ): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.clearChatHistory(petId = petId)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Could not clear chat history")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getSystemHealth(): Result<SystemHealthDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getSystemHealth()
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Could not check system health")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
 }
 
 

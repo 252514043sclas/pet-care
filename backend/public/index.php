@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+// Prevent timeouts for local AI model generation
+@set_time_limit(300);
+@ini_set('max_execution_time', '300');
+
 // Automatic class loader for App\ namespace
 spl_autoload_register(function ($class) {
     $prefix = 'App\\';
@@ -32,6 +36,7 @@ use App\Controllers\ReminderController;
 use App\Controllers\GroomingController;
 use App\Controllers\PreferenceController;
 use App\Controllers\SupportController;
+use App\Controllers\ChatController;
 use App\Utils\Response;
 
 // Apply CORS
@@ -65,13 +70,8 @@ try {
     // ------------------------------------------------------------------------
 
     // Health check / root
-    if ($uri === '/' || $uri === '/api' || $uri === '/api/health-check') {
-        Response::success([
-            'status' => 'operational',
-            'api' => 'Pet Care REST API',
-            'version' => '1.0.0',
-            'timestamp' => date('Y-m-d H:i:s'),
-        ], 'API is online');
+    if ($uri === '/' || $uri === '/api' || $uri === '/api/health-check' || $uri === '/api/health') {
+        (new ChatController())->health();
     }
 
     // Auth Public
@@ -335,6 +335,33 @@ try {
 
     if ($requestMethod === 'DELETE' && preg_match('#^/api/grooming/reminders/(\d+)$#', $uri, $matches)) {
         (new GroomingController())->destroy($user, (int)$matches[1]);
+    }
+
+    // ------------------------------------------------------------------------
+    // AI Chatbot, Multimodal Vision, Nutrition & Search (Qwen3-VL 2B)
+    // ------------------------------------------------------------------------
+    if ($requestMethod === 'POST' && $uri === '/api/chat') {
+        (new ChatController())->chat($user, $input);
+    }
+
+    if ($requestMethod === 'POST' && $uri === '/api/chat/image') {
+        (new ChatController())->analyzeImage($user, $input);
+    }
+
+    if ($requestMethod === 'POST' && $uri === '/api/nutrition') {
+        (new ChatController())->nutrition($user, $input);
+    }
+
+    if ($requestMethod === 'POST' && $uri === '/api/search') {
+        (new ChatController())->search($user, $input);
+    }
+
+    if ($requestMethod === 'GET' && $uri === '/api/chat/history') {
+        (new ChatController())->history($user, $input);
+    }
+
+    if ($requestMethod === 'DELETE' && $uri === '/api/chat/history') {
+        (new ChatController())->clearHistory($user, $input);
     }
 
     // Route not found

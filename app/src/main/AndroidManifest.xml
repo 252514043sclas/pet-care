@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:allowBackup="true"
@@ -38,9 +43,9 @@
         <activity android:name=".SignUpActivity" android:exported="false" />
         <activity android:name=".SelectPetTypeActivity" android:exported="false" />
         <activity android:name=".AddPetProfileActivity" android:exported="false" />
-        <activity android:name=".HomeDashboardActivity" android:exported="false" />
+        <activity android:name=".HomeDashboardActivity" android:exported="true" />
         <activity android:name=".PetDetailProfileActivity" android:exported="false" />
-        <activity android:name=".HealthHomeActivity" android:exported="false" />
+        <activity android:name=".HealthHomeActivity" android:exported="true" />
         <activity android:name=".PhotoScanActivity" android:exported="false" />
         <activity android:name=".SymptomSelectionActivity" android:exported="false" />
         <activity android:name=".AnalyzingActivity" android:exported="false" />
@@ -58,6 +63,10 @@
         <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".HealthScoreDetailActivity" android:exported="false" />
         <activity android:name=".VaccinationDetailActivity" android:exported="false" />
+        <activity
+            android:name=".AIChatActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- Feeding Schedule Meal Reminder Receiver -->
         <receiver

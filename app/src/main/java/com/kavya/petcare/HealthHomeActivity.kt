@@ -15,6 +15,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Healing
 import androidx.compose.material.icons.filled.HealthAndSafety
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -89,6 +90,16 @@ class HealthHomeActivity : ComponentActivity() {
                         }
 
                         PetSectionHeader(title = "Diagnostic Tools")
+
+                        HealthActionCard(
+                            title = "AI Pet Care Chatbot",
+                            subtitle = "Chat with Qwen3-VL on symptoms, wounds, nutrition, or upload photos",
+                            icon = Icons.Default.AutoAwesome,
+                            accentColor = MintSage,
+                            onClick = {
+                                startActivity(Intent(this@HealthHomeActivity, AIChatActivity::class.java))
+                            }
+                        )
 
                         HealthActionCard(
                             title = "AI Photo Scan",

@@ -66,6 +66,7 @@ class HomeDashboardActivity : ComponentActivity() {
                     onNavigateAddReminder = { startActivity(Intent(this, AddReminderActivity::class.java)) },
                     onNavigateCalendar = { startActivity(Intent(this, GroomingCalendarActivity::class.java)) },
                     onNavigateGuides = { startActivity(Intent(this, GroomingGuideActivity::class.java)) },
+                    onNavigateAIChat = { startActivity(Intent(this, AIChatActivity::class.java)) },
                     onAddPet = { startActivity(Intent(this, SelectPetTypeActivity::class.java)) },
                     onNavigateProfile = { startActivity(Intent(this, PetDetailProfileActivity::class.java)) },
                     onNavigateSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
@@ -103,6 +104,7 @@ fun MainSlidingDashboardScreen(
     onNavigateAddReminder: () -> Unit,
     onNavigateCalendar: () -> Unit,
     onNavigateGuides: () -> Unit,
+    onNavigateAIChat: () -> Unit,
     onAddPet: () -> Unit,
     onNavigateProfile: () -> Unit,
     onNavigateSettings: () -> Unit
@@ -157,6 +159,22 @@ fun MainSlidingDashboardScreen(
     ) {
         Scaffold(
             containerColor = SoftBackground,
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    onClick = onNavigateAIChat,
+                    containerColor = EmeraldPrimary,
+                    contentColor = Color.White,
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
+                    icon = {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MintLight)
+                    },
+                    text = {
+                        Text("Ask AI", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                )
+            },
+            floatingActionButtonPosition = FabPosition.End,
             bottomBar = {
                 // Floating Island Modern Bottom Navigation Bar
                 Surface(
@@ -254,7 +272,8 @@ fun MainSlidingDashboardScreen(
                     )
                     1 -> HealthTabScreen(
                         onNavigatePhotoScan = onNavigatePhotoScan,
-                        onNavigateSymptomSelection = onNavigateSymptomSelection
+                        onNavigateSymptomSelection = onNavigateSymptomSelection,
+                        onNavigateAIChat = onNavigateAIChat
                     )
                     2 -> DietTabScreen(
                         onNavigateDietPlan = onNavigateDietPlan,
@@ -769,7 +788,8 @@ fun DashboardActionCard(
 @Composable
 fun HealthTabScreen(
     onNavigatePhotoScan: () -> Unit,
-    onNavigateSymptomSelection: () -> Unit
+    onNavigateSymptomSelection: () -> Unit,
+    onNavigateAIChat: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -878,6 +898,61 @@ fun HealthTabScreen(
                     )
                     Text(
                         text = "Select observed behavioral or physical signs",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        // AI Pet Care Chatbot Hero Card
+        PetModernCard(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = onNavigateAIChat,
+            containerColor = MintSoft
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MintSage),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = "AI Chat",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "AI Pet Care Chatbot",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = EmeraldDark
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        PetBadge(text = "Qwen3-VL", containerColor = WarmPearl, contentColor = EmeraldPrimary)
+                    }
+                    Text(
+                        text = "Chat about diseases, nutrition, or upload photos",
                         color = TextSecondary,
                         fontSize = 13.sp
                     )

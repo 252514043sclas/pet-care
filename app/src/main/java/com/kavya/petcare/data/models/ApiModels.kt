@@ -492,3 +492,111 @@ data class VaccinationOverviewDto(
     @SerializedName("vaccinations") val vaccinations: List<PetVaccinationDto> = emptyList()
 )
 
+// ----------------------------------------------------
+// AI Pet Care Chatbot & Multimodal Vision (Qwen3-VL 2B)
+// ----------------------------------------------------
+data class ChatRequest(
+    @SerializedName("message") val message: String,
+    @SerializedName("pet_id") val petId: Int? = null,
+    @SerializedName("enable_search") val enableSearch: Boolean = true
+)
+
+data class SearchSourceDto(
+    @SerializedName("title") val title: String = "",
+    @SerializedName("url") val url: String = "",
+    @SerializedName("snippet") val snippet: String = "",
+    @SerializedName("source") val source: String = "",
+    @SerializedName("date") val date: String? = null
+)
+
+data class VisionMetadataDto(
+    @SerializedName("pet_type") val petType: String? = null,
+    @SerializedName("observations") val observations: String? = null,
+    @SerializedName("possible_conditions") val possibleConditions: String? = null,
+    @SerializedName("severity") val severity: String? = null,
+    @SerializedName("confidence") val confidence: String? = null,
+    @SerializedName("recommended_care") val recommendedCare: String? = null,
+    @SerializedName("vet_recommendation") val vetRecommendation: String? = null
+)
+
+data class ChatResponseDto(
+    @SerializedName("message") val message: String,
+    @SerializedName("message_id") val messageId: Int? = null,
+    @SerializedName("user_message_id") val userMessageId: Int? = null,
+    @SerializedName("sender") val sender: String = "assistant",
+    @SerializedName("sources") val sources: List<SearchSourceDto> = emptyList(),
+    @SerializedName("model") val model: String? = null,
+    @SerializedName("elapsed_seconds") val elapsedSeconds: Double? = null,
+    @SerializedName("timestamp") val timestamp: String? = null
+)
+
+data class ChatImageRequest(
+    @SerializedName("image") val imageBase64: String,
+    @SerializedName("prompt") val prompt: String = "",
+    @SerializedName("pet_id") val petId: Int? = null
+)
+
+data class ChatImageResponseDto(
+    @SerializedName("message") val message: String,
+    @SerializedName("message_id") val messageId: Int? = null,
+    @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("metadata") val metadata: VisionMetadataDto? = null,
+    @SerializedName("model") val model: String? = null,
+    @SerializedName("elapsed_seconds") val elapsedSeconds: Double? = null,
+    @SerializedName("timestamp") val timestamp: String? = null
+)
+
+data class ChatMessageDto(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("user_id") val userId: Int = 0,
+    @SerializedName("pet_id") val petId: Int? = null,
+    @SerializedName("sender") val sender: String = "user", // "user" or "assistant"
+    @SerializedName("message") val message: String = "",
+    @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("message_type") val messageType: String = "text",
+    @SerializedName("sources") val sources: List<SearchSourceDto> = emptyList(),
+    @SerializedName("analysis_metadata") val analysisMetadata: VisionMetadataDto? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class NutritionRequest(
+    @SerializedName("query") val query: String,
+    @SerializedName("pet_id") val petId: Int? = null
+)
+
+data class NutritionResponseDto(
+    @SerializedName("message") val message: String,
+    @SerializedName("message_id") val messageId: Int? = null,
+    @SerializedName("user_message_id") val userMessageId: Int? = null,
+    @SerializedName("timestamp") val timestamp: String? = null
+)
+
+data class SearchRequest(
+    @SerializedName("query") val query: String,
+    @SerializedName("max_results") val maxResults: Int = 4
+)
+
+data class SearchResponseDto(
+    @SerializedName("query") val query: String,
+    @SerializedName("total_results") val totalResults: Int = 0,
+    @SerializedName("results") val results: List<SearchSourceDto> = emptyList(),
+    @SerializedName("trusted_sources_included") val trustedSourcesIncluded: Boolean = true
+)
+
+data class OllamaHealthDto(
+    @SerializedName("status") val status: String = "offline",
+    @SerializedName("message") val message: String = "",
+    @SerializedName("model_loaded") val modelLoaded: Boolean = false,
+    @SerializedName("model") val model: String = "qwen3-vl:2b",
+    @SerializedName("available_models") val availableModels: List<String> = emptyList()
+)
+
+data class SystemHealthDto(
+    @SerializedName("status") val status: String = "unknown",
+    @SerializedName("database") val database: String = "unknown",
+    @SerializedName("ai_service") val aiService: OllamaHealthDto? = null,
+    @SerializedName("search_provider") val searchProvider: String? = null,
+    @SerializedName("server_time") val serverTime: String? = null
+)
+
+

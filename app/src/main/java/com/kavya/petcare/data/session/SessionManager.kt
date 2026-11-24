@@ -138,6 +138,24 @@ class SessionManager private constructor(context: Context) {
         prefs.edit().putInt(KEY_ACTIVE_PET_ID, petId).apply()
     }
 
+    fun getActivePetDetails(): com.kavya.petcare.data.models.PetDto? {
+        val id = getActivePetId()
+        val name = getSavedActivePetName() ?: return null
+        return com.kavya.petcare.data.models.PetDto(
+            id = id,
+            name = name,
+            species = getSavedActivePetType() ?: "Dog",
+            breed = getSavedActivePetBreed() ?: "Mixed",
+            ageYears = getSavedActivePetAge() ?: "Adult",
+            weightKg = getSavedActivePetWeight()?.toDoubleOrNull() ?: 0.0,
+            gender = getSavedActivePetGender() ?: "Female",
+            imageUrl = getSavedActivePetImageUrl(),
+            healthScore = getSavedActivePetHealthScore(),
+            vaccinationStatus = getSavedActivePetVaccination(),
+            isActive = 1
+        )
+    }
+
     fun getActivePetId(): Int = prefs.getInt(KEY_ACTIVE_PET_ID, 1)
 
     fun saveBaseUrl(url: String) {
