@@ -41,31 +41,44 @@ class DietController {
         $petId = $this->resolvePetId($pdo, $currentUser, $input);
 
         $consumed = 0;
-        $target = 900;
+        $target = 0;
 
         if ($petId) {
-            $stmt = $pdo->prepare('SELECT SUM(calories) as total FROM meal_entries WHERE user_id = :user_id AND pet_id = :pet_id');
+            $stmt = $pdo->prepare('SELECT COALESCE(SUM(calories), 0) as total FROM meal_entries WHERE user_id = :user_id AND pet_id = :pet_id');
             $stmt->execute([':user_id' => $currentUser['id'], ':pet_id' => $petId]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $consumed = (int)($row['total'] ?? 0);
 
-            $targetStmt = $pdo->prepare('SELECT SUM(calories) as target_total FROM meal_schedules WHERE pet_id = :pet_id');
+            $targetStmt = $pdo->prepare('SELECT COALESCE(SUM(calories), 0) as target_total FROM meal_schedules WHERE pet_id = :pet_id');
             $targetStmt->execute([':pet_id' => $petId]);
             $targetRow = $targetStmt->fetch(PDO::FETCH_ASSOC);
-            if (!empty($targetRow['target_total'])) {
-                $target = (int)$targetRow['target_total'];
-            }
+            $target = (int)($targetRow['target_total'] ?? 0);
         }
 
-        if ($consumed === 0) {
-            $consumed = (int)round($target * 0.72);
-        }
+        $remaining = max(0, $target - $consumed);
+        $progress = $target > 0 ? min(1.0, round($consumed / $target, 2)) : 0.0;
+        $progressPercentage = $target > 0 ? (int)round(($consumed / $target) * 100) : 0;
+        $hasSchedule = $target > 0;
+
+        $message = $target === 0
+            ? 'Set up your feeding schedule to view your daily calorie target.'
+            : "Target: {$target} kcal/day";
+
+        $label = $target === 0
+            ? '0 kcal / day'
+            : "Consumed: {$consumed} / {$target} kcal";
 
         Response::success([
+            'pet_id' => $petId,
             'consumed_calories' => $consumed,
             'target_calories' => $target,
-            'progress' => min(1.0, round($consumed / max(1, $target), 2)),
-            'label' => "Consumed: {$consumed} / {$target} kcal",
+            'remaining_calories' => $remaining,
+            'progress' => $progress,
+            'progress_ratio' => $progress,
+            'progress_percentage' => $progressPercentage,
+            'has_schedule' => $hasSchedule,
+            'message' => $message,
+            'label' => $label,
         ]);
     }
 
@@ -125,6 +138,19 @@ class DietController {
         $calories = isset($input['calories']) && $input['calories'] !== '' ? (int)$input['calories'] : 0;
         $isReminderEnabled = isset($input['is_reminder_enabled']) ? ((int)$input['is_reminder_enabled'] ? 1 : 0) : 1;
 
+        if ($calories <= 0 && $foodName !== '') {
+            $petStmt = $pdo->prepare('SELECT species FROM pets WHERE id = :id LIMIT 1');
+            $petStmt->execute([':id' => $petId]);
+            $petRow = $petStmt->fetch(PDO::FETCH_ASSOC);
+            $species = $petRow ? (string)$petRow['species'] : null;
+
+            $parsedPortion = FoodNutritionSafetyService::parsePortion($foodQuantity);
+            $analysis = FoodNutritionSafetyService::analyze($foodName, $parsedPortion['quantity'], $parsedPortion['unit'], $species);
+            if (!empty($analysis['estimated_calories']) && (int)$analysis['estimated_calories'] > 0) {
+                $calories = (int)$analysis['estimated_calories'];
+            }
+        }
+
         $stmt = $pdo->prepare('INSERT INTO meal_schedules (pet_id, meal_name, scheduled_time, food_name, food_quantity, meal_description, instructions, calories, is_reminder_enabled, created_at)
             VALUES (:pet_id, :meal_name, :scheduled_time, :food_name, :food_quantity, :meal_description, :instructions, :calories, :is_reminder_enabled, NOW())');
         $stmt->execute([
@@ -165,10 +191,24 @@ class DietController {
     public function updateSchedule(array $currentUser, int $id, array $input): void {
         $pdo = Database::getConnection();
 
-        $check = $pdo->prepare('SELECT m.id FROM meal_schedules m JOIN pets p ON m.pet_id = p.id WHERE m.id = :id AND p.user_id = :user_id LIMIT 1');
+        $check = $pdo->prepare('SELECT m.id, m.pet_id, m.food_name, m.food_quantity, m.calories, p.species FROM meal_schedules m JOIN pets p ON m.pet_id = p.id WHERE m.id = :id AND p.user_id = :user_id LIMIT 1');
         $check->execute([':id' => $id, ':user_id' => $currentUser['id']]);
-        if (!$check->fetch()) {
+        $existing = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$existing) {
             Response::notFound('Meal schedule not found or unauthorized');
+        }
+
+        // If food_name or food_quantity changed and user didn't explicitly supply positive calories, recalculate
+        if ((array_key_exists('food_name', $input) || array_key_exists('food_quantity', $input)) && (!isset($input['calories']) || (int)$input['calories'] <= 0)) {
+            $effFood = isset($input['food_name']) ? trim((string)$input['food_name']) : (string)$existing['food_name'];
+            $effQty = isset($input['food_quantity']) ? trim((string)$input['food_quantity']) : (string)$existing['food_quantity'];
+            if ($effFood !== '') {
+                $parsedPortion = FoodNutritionSafetyService::parsePortion($effQty);
+                $analysis = FoodNutritionSafetyService::analyze($effFood, $parsedPortion['quantity'], $parsedPortion['unit'], (string)$existing['species']);
+                if (!empty($analysis['estimated_calories']) && (int)$analysis['estimated_calories'] > 0) {
+                    $input['calories'] = (int)$analysis['estimated_calories'];
+                }
+            }
         }
 
         $fields = [];

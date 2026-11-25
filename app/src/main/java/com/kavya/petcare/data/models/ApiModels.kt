@@ -106,9 +106,13 @@ data class TodayScheduleItemDto(
 
 // Diet Data
 data class DietSummaryDto(
-    @SerializedName("consumed_calories") val consumedCalories: Int = 650,
-    @SerializedName("target_calories") val targetCalories: Int = 800,
-    @SerializedName("progress_ratio") val progressRatio: Float = 0.81f,
+    @SerializedName("consumed_calories") val consumedCalories: Int = 0,
+    @SerializedName("target_calories") val targetCalories: Int = 0,
+    @SerializedName("remaining_calories") val remainingCalories: Int = 0,
+    @SerializedName("progress_ratio") val progressRatio: Float = 0f,
+    @SerializedName("progress_percentage") val progressPercentage: Int = 0,
+    @SerializedName("has_schedule") val hasSchedule: Boolean = false,
+    @SerializedName("message") val message: String? = null,
     @SerializedName("label") val label: String? = null
 )
 
@@ -333,21 +337,6 @@ data class GroomingGuideDto(
 )
 
 // Health & Diagnostics
-data class HealthScanResultDto(
-    @SerializedName("scan_id") val scanId: Int,
-    @SerializedName("condition_id") val conditionId: Int = 1,
-    @SerializedName("diagnosis_title") val diagnosisTitle: String,
-    @SerializedName("match_percentage") val matchPercentage: Int,
-    @SerializedName("severity") val severity: String,
-    @SerializedName("summary") val summary: String,
-    @SerializedName("recommended_action") val recommendedAction: String? = null
-)
-
-data class HealthScanRequest(
-    @SerializedName("scan_type") val scanType: String = "symptoms",
-    @SerializedName("symptoms") val symptoms: List<String> = emptyList()
-)
-
 data class ConditionGuideDto(
     @SerializedName("id") val id: Int = 1,
     @SerializedName("condition_name") val conditionName: String,
@@ -454,8 +443,7 @@ data class PetHealthScoreOverviewDto(
     @SerializedName("status_label") val statusLabel: String = "Not enough health data",
     @SerializedName("total_records") val totalRecords: Int = 0,
     @SerializedName("breakdown") val breakdown: List<HealthScoreFactorDto> = emptyList(),
-    @SerializedName("health_records") val healthRecords: List<PetHealthRecordDto> = emptyList(),
-    @SerializedName("recent_scans") val recentScans: List<HealthScanResultDto> = emptyList()
+    @SerializedName("health_records") val healthRecords: List<PetHealthRecordDto> = emptyList()
 )
 
 // ----------------------------------------------------

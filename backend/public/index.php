@@ -92,10 +92,6 @@ try {
         (new DietController())->safeToxicFoods();
     }
 
-    if ($requestMethod === 'GET' && $uri === '/api/health/symptoms') {
-        (new HealthController())->symptoms();
-    }
-
     if ($requestMethod === 'GET' && $uri === '/api/health/conditions') {
         (new HealthController())->conditions();
     }
@@ -245,10 +241,6 @@ try {
     }
 
     // Health & Diagnostics
-    if ($requestMethod === 'POST' && $uri === '/api/health/scan') {
-        (new HealthController())->analyze($user, $input);
-    }
-
     if ($requestMethod === 'POST' && $uri === '/api/health/reports/save') {
         (new HealthController())->saveReport($user, $input);
     }

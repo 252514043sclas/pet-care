@@ -127,8 +127,10 @@ fun DietPlanScreen(onBack: () -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.loadMealSchedules()
+    LaunchedEffect(activePet.id) {
+        val petId = activePet.id.toIntOrNull()
+        viewModel.loadMealSchedules(petId)
+        viewModel.loadDietSummary(petId)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotifPermission) {
             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -255,9 +257,12 @@ fun DietPlanScreen(onBack: () -> Unit) {
             }
 
             // Daily Calorie Target Section
-            val targetCalories = dietSummary?.targetCalories ?: 800
-            val consumedCalories = dietSummary?.consumedCalories ?: 650
-            val progressRatio = (consumedCalories.toFloat() / targetCalories.coerceAtLeast(1).toFloat()).coerceIn(0f, 1f)
+            val targetCalories = dietSummary?.targetCalories ?: 0
+            val consumedCalories = dietSummary?.consumedCalories ?: 0
+            val remainingCalories = (targetCalories - consumedCalories).coerceAtLeast(0)
+            val hasSchedule = (dietSummary?.hasSchedule == true) || (mealSchedules.isNotEmpty() && targetCalories > 0)
+            val progressRatio = if (targetCalories > 0) (consumedCalories.toFloat() / targetCalories.toFloat()).coerceIn(0f, 1f) else 0f
+            val percentMet = if (targetCalories > 0) ((consumedCalories.toFloat() / targetCalories.toFloat()) * 100).toInt() else 0
             val mealCount = mealSchedules.size
 
             PetModernCard(
@@ -291,19 +296,23 @@ fun DietPlanScreen(onBack: () -> Unit) {
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Target: $targetCalories kcal / day",
+                                text = if (targetCalories > 0) "Target: $targetCalories kcal / day" else "Target: 0 kcal / day",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = EmeraldDark
                             )
                             Text(
-                                text = "Divided into $mealCount balanced portions throughout the day",
+                                text = if (hasSchedule) {
+                                    "Divided into $mealCount balanced portion${if (mealCount == 1) "" else "s"} throughout the day"
+                                } else {
+                                    "Set up your feeding schedule to view your daily calorie target."
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = TextSecondary
                             )
                         }
                         PetBadge(
-                            text = "${(progressRatio * 100).toInt()}% Met",
+                            text = "$percentMet% Met",
                             containerColor = MintSoft,
                             contentColor = EmeraldPrimary
                         )
@@ -328,9 +337,8 @@ fun DietPlanScreen(onBack: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
-                        val remaining = (targetCalories - consumedCalories).coerceAtLeast(0)
                         Text(
-                            text = "$remaining kcal remaining",
+                            text = if (targetCalories > 0) "$remainingCalories kcal remaining" else "0 kcal remaining",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.SemiBold,
                             color = AmberAccent
@@ -392,9 +400,10 @@ fun DietPlanScreen(onBack: () -> Unit) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "No feeding schedules configured yet.",
+                            text = "No feeding schedules configured yet.\nSet up your feeding schedule to view your daily calorie target.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
+                            color = TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         PetGradientButton(
@@ -998,8 +1007,14 @@ private fun MealScheduleFormDialog(
                         value = caloriesText,
                         onValueChange = { caloriesText = it.filter { ch -> ch.isDigit() } },
                         label = "Estimated Calories (kcal)",
-                        placeholder = "Enter calories",
+                        placeholder = "Leave empty to auto-calculate",
                         keyboardType = KeyboardType.Number
+                    )
+                    Text(
+                        text = "Leave empty to automatically calculate calories from nutritional data",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = LabelGreyGreen,
+                        modifier = Modifier.padding(start = 4.dp)
                     )
 
                     // 6. Feeding Notes / Instructions (Comfortable Multiline)

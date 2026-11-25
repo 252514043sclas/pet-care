@@ -376,9 +376,9 @@ class PetCareRepository(private val context: Context) {
     // ----------------------------------------------------
     // Diet & Nutrition
     // ----------------------------------------------------
-    suspend fun getDietSummary(): Result<DietSummaryDto> = withContext(Dispatchers.IO) {
+    suspend fun getDietSummary(petId: Int? = null): Result<DietSummaryDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.getDietSummary()
+            val response = api.getDietSummary(petId)
             if (response.isSuccessful && response.body()?.success == true) {
                 Result.success(response.body()!!.data!!)
             } else {
@@ -617,33 +617,6 @@ class PetCareRepository(private val context: Context) {
     // ----------------------------------------------------
     // Health & AI Diagnostics
     // ----------------------------------------------------
-    suspend fun getSymptoms(): Result<List<String>> = withContext(Dispatchers.IO) {
-        try {
-            val response = api.getSymptoms()
-            if (response.isSuccessful && response.body()?.success == true) {
-                Result.success(response.body()!!.data ?: emptyList())
-            } else {
-                Result.failure(Exception(response.body()?.message ?: "Failed to load symptoms"))
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception(formatNetworkError(e)))
-        }
-    }
-
-    suspend fun runHealthScan(symptoms: List<String>, scanType: String = "symptoms"): Result<HealthScanResultDto> = withContext(Dispatchers.IO) {
-        try {
-            val req = HealthScanRequest(scanType = scanType, symptoms = symptoms)
-            val response = api.runHealthScan(req)
-            if (response.isSuccessful && response.body()?.success == true) {
-                Result.success(response.body()!!.data!!)
-            } else {
-                Result.failure(Exception(response.body()?.message ?: "Diagnostic scan failed"))
-            }
-        } catch (e: Exception) {
-            Result.failure(Exception(formatNetworkError(e)))
-        }
-    }
-
     suspend fun getConditionDetail(id: Int = 1): Result<ConditionGuideDto> = withContext(Dispatchers.IO) {
         try {
             val response = api.getConditionDetail(id)

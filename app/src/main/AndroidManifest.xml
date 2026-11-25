@@ -45,11 +45,6 @@
         <activity android:name=".AddPetProfileActivity" android:exported="false" />
         <activity android:name=".HomeDashboardActivity" android:exported="true" />
         <activity android:name=".PetDetailProfileActivity" android:exported="false" />
-        <activity android:name=".HealthHomeActivity" android:exported="true" />
-        <activity android:name=".PhotoScanActivity" android:exported="false" />
-        <activity android:name=".SymptomSelectionActivity" android:exported="false" />
-        <activity android:name=".AnalyzingActivity" android:exported="false" />
-        <activity android:name=".ResultActivity" android:exported="false" />
         <activity android:name=".DiseaseDetailActivity" android:exported="false" />
         <activity android:name=".DietHomeActivity" android:exported="false" />
         <activity android:name=".DietPlanActivity" android:exported="false" />

@@ -83,6 +83,39 @@ class FoodNutritionSafetyService {
         };
     }
 
+    public static function parsePortion(?string $portionStr): array {
+        $str = strtolower(trim((string)$portionStr));
+        if ($str === '') {
+            return ['quantity' => 1.0, 'unit' => 'g'];
+        }
+
+        if (preg_match('/^([\d\.]+)\s*(cups?|g|grams?|pieces?|pcs?|pc|slices?|tbsp|tablespoons?|tsp|teaspoons?|bowl|bowls?|ml)?/i', $str, $matches)) {
+            $qty = (float)$matches[1];
+            $rawUnit = !empty($matches[2]) ? strtolower($matches[2]) : '';
+            if (str_starts_with($rawUnit, 'cup')) {
+                $unit = 'cups';
+            } elseif ($rawUnit === 'g' || str_starts_with($rawUnit, 'gram')) {
+                $unit = 'g';
+            } elseif (str_starts_with($rawUnit, 'piece') || str_starts_with($rawUnit, 'pc') || str_starts_with($rawUnit, 'slice')) {
+                $unit = 'pieces';
+            } elseif (str_starts_with($rawUnit, 'tbsp') || str_starts_with($rawUnit, 'tablespoon')) {
+                $unit = 'tbsp';
+            } elseif (str_starts_with($rawUnit, 'tsp') || str_starts_with($rawUnit, 'teaspoon')) {
+                $unit = 'tsp';
+            } elseif (str_starts_with($rawUnit, 'bowl')) {
+                $qty = $qty * 1.5;
+                $unit = 'cups';
+            } elseif ($rawUnit === 'ml') {
+                $unit = 'g';
+            } else {
+                $unit = ($qty < 10.0) ? 'pieces' : 'g';
+            }
+            return ['quantity' => max(0.01, $qty), 'unit' => $unit];
+        }
+
+        return ['quantity' => 1.0, 'unit' => 'g'];
+    }
+
     private static function calculateCalories(string $foodName, float $quantity, string $unit): array {
         if ($foodName === '' || $quantity <= 0) {
             return ['available' => false, 'calories' => null, 'source' => 'Unavailable', 'grams' => null];
@@ -202,6 +235,7 @@ class FoodNutritionSafetyService {
             'alfalfa hay'       => ['kcal_100g' => 230, 'cup_g' => 35,  'piece_g' => 15,  'tbsp_g' => 5,  'tsp_g' => 2],
             'hay'               => ['kcal_100g' => 195, 'cup_g' => 30,  'piece_g' => 15,  'tbsp_g' => 4,  'tsp_g' => 1.5],
             'rabbit pellet'     => ['kcal_100g' => 240, 'cup_g' => 110, 'piece_g' => 2,   'tbsp_g' => 10, 'tsp_g' => 3.5],
+            'rabbit pellets'    => ['kcal_100g' => 240, 'cup_g' => 110, 'piece_g' => 2,   'tbsp_g' => 10, 'tsp_g' => 3.5],
             'guinea pig pellet' => ['kcal_100g' => 250, 'cup_g' => 110, 'piece_g' => 2,   'tbsp_g' => 10, 'tsp_g' => 3.5],
             'hamster pellet'    => ['kcal_100g' => 320, 'cup_g' => 115, 'piece_g' => 3,   'tbsp_g' => 10, 'tsp_g' => 3.5],
             'fish flake'        => ['kcal_100g' => 370, 'cup_g' => 40,  'piece_g' => 0.5, 'tbsp_g' => 3,  'tsp_g' => 1],
@@ -213,6 +247,10 @@ class FoodNutritionSafetyService {
             'wet dog food'      => ['kcal_100g' => 105, 'cup_g' => 220, 'piece_g' => 50,  'tbsp_g' => 15, 'tsp_g' => 5],
             'wet cat food'      => ['kcal_100g' => 95,  'cup_g' => 220, 'piece_g' => 50,  'tbsp_g' => 15, 'tsp_g' => 5],
             'wet food'          => ['kcal_100g' => 100, 'cup_g' => 220, 'piece_g' => 50,  'tbsp_g' => 15, 'tsp_g' => 5],
+            'dry dog food'      => ['kcal_100g' => 365, 'cup_g' => 115, 'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],
+            'dry cat food'      => ['kcal_100g' => 380, 'cup_g' => 115, 'piece_g' => 1.5, 'tbsp_g' => 9,  'tsp_g' => 3],
+            'dry food'          => ['kcal_100g' => 365, 'cup_g' => 115, 'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],
+            'dry kibble'        => ['kcal_100g' => 365, 'cup_g' => 115, 'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],
             'dog kibble'        => ['kcal_100g' => 360, 'cup_g' => 115, 'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],
             'cat kibble'        => ['kcal_100g' => 385, 'cup_g' => 115, 'piece_g' => 1.5, 'tbsp_g' => 9,  'tsp_g' => 3],
             'pedigree'          => ['kcal_100g' => 345, 'cup_g' => 110, 'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],
@@ -221,6 +259,11 @@ class FoodNutritionSafetyService {
             'drool'             => ['kcal_100g' => 355, 'cup_g' => 110, 'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],
             'kibble'            => ['kcal_100g' => 365, 'cup_g' => 115, 'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],
             'pellet'            => ['kcal_100g' => 280, 'cup_g' => 110, 'piece_g' => 2,   'tbsp_g' => 10, 'tsp_g' => 3.5],
+            'pellets'           => ['kcal_100g' => 280, 'cup_g' => 110, 'piece_g' => 2,   'tbsp_g' => 10, 'tsp_g' => 3.5],
+            'cerelac'           => ['kcal_100g' => 415, 'cup_g' => 100, 'piece_g' => 15,  'tbsp_g' => 10, 'tsp_g' => 3.5],
+            'curd rice'         => ['kcal_100g' => 140, 'cup_g' => 200, 'piece_g' => 30,  'tbsp_g' => 15, 'tsp_g' => 5],
+            'curd'              => ['kcal_100g' => 98,  'cup_g' => 200, 'piece_g' => 20,  'tbsp_g' => 15, 'tsp_g' => 5],
+            'milk'              => ['kcal_100g' => 60,  'cup_g' => 240, 'piece_g' => 30,  'tbsp_g' => 15, 'tsp_g' => 5],
             'dog biscuit'       => ['kcal_100g' => 350, 'cup_g' => 90,  'piece_g' => 14,  'tbsp_g' => 10, 'tsp_g' => 3.5],
             'dog treat'         => ['kcal_100g' => 330, 'cup_g' => 90,  'piece_g' => 10,  'tbsp_g' => 10, 'tsp_g' => 3.5],
             'cat treat'         => ['kcal_100g' => 360, 'cup_g' => 85,  'piece_g' => 2,   'tbsp_g' => 9,  'tsp_g' => 3],

@@ -164,7 +164,7 @@ CREATE TABLE `meal_schedules` (
     `food_quantity` VARCHAR(100) NULL, -- "2 Cups"
     `meal_description` VARCHAR(255) NOT NULL, -- Combined description or notes
     `instructions` TEXT NULL, -- Feeding instructions / advice
-    `calories` INT NOT NULL DEFAULT 350,
+    `calories` INT NOT NULL DEFAULT 0,
     `is_reminder_enabled` TINYINT(1) NOT NULL DEFAULT 1,
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -162,13 +162,6 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     private val _groomingGuides = MutableStateFlow<List<GroomingGuideDto>>(emptyList())
     val groomingGuides: StateFlow<List<GroomingGuideDto>> = _groomingGuides.asStateFlow()
 
-    // Health Symptoms & Diagnostics
-    private val _symptomsList = MutableStateFlow<List<String>>(emptyList())
-    val symptomsList: StateFlow<List<String>> = _symptomsList.asStateFlow()
-
-    private val _diagnosticResult = MutableStateFlow<HealthScanResultDto?>(null)
-    val diagnosticResult: StateFlow<HealthScanResultDto?> = _diagnosticResult.asStateFlow()
-
     private val _conditionDetail = MutableStateFlow<ConditionGuideDto?>(null)
     val conditionDetail: StateFlow<ConditionGuideDto?> = _conditionDetail.asStateFlow()
 
@@ -218,7 +211,6 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         loadSafeToxicFoods()
         loadCalendarTasks()
         loadGroomingReminders()
-        loadSymptoms()
         loadConditionDetail(1)
         loadMealSchedules()
         loadDietSummary()
@@ -480,6 +472,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             loadMealHistory(p.id)
             loadHealthScore(p.id)
             loadVaccinations(p.id)
+            loadMealSchedules(p.id)
+            loadDietSummary(p.id)
         }
     }
 
@@ -904,13 +898,14 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                 FeedingScheduleStore.saveSchedules(getApplication(), targetPetId, list, petName)
                 MealNotificationScheduler.rescheduleAllForPet(getApplication(), targetPetId, petName, list)
             }
-            loadDietSummary()
+            loadDietSummary(targetPetId)
         }
     }
 
-    fun loadDietSummary() {
+    fun loadDietSummary(petId: Int? = null) {
+        val targetPetId = petId ?: _activePet.value.id.toIntOrNull() ?: session.getActivePetId()
         viewModelScope.launch {
-            repository.getDietSummary().onSuccess { summary ->
+            repository.getDietSummary(targetPetId).onSuccess { summary ->
                 _dietSummary.value = summary
             }
         }
@@ -1398,30 +1393,6 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     // ----------------------------------------------------
     // Health & Diagnostics
     // ----------------------------------------------------
-    fun loadSymptoms() {
-        viewModelScope.launch {
-            repository.getSymptoms().onSuccess { list ->
-                if (list.isNotEmpty()) {
-                    _symptomsList.value = list
-                }
-            }
-        }
-    }
-
-    fun runDiagnosticScan(symptoms: List<String>, onComplete: () -> Unit) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            val result = repository.runHealthScan(symptoms)
-            _isLoading.value = false
-            result.onSuccess { scanResult ->
-                _diagnosticResult.value = scanResult
-                onComplete()
-            }.onFailure {
-                onComplete()
-            }
-        }
-    }
-
     fun loadConditionDetail(id: Int = 1) {
         viewModelScope.launch {
             repository.getConditionDetail(id).onSuccess { guide ->

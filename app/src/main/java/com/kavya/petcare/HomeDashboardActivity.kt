@@ -57,8 +57,6 @@ class HomeDashboardActivity : ComponentActivity() {
                 MainSlidingDashboardScreen(
                     viewModel = viewModel,
                     onExitApp = { finish() },
-                    onNavigatePhotoScan = { startActivity(Intent(this, PhotoScanActivity::class.java)) },
-                    onNavigateSymptomSelection = { startActivity(Intent(this, SymptomSelectionActivity::class.java)) },
                     onNavigateDietPlan = { startActivity(Intent(this, DietPlanActivity::class.java)) },
                     onNavigateMealLog = { startActivity(Intent(this, MealLogActivity::class.java)) },
                     onNavigateSafeFoods = { startActivity(Intent(this, SafeVsToxicFoodsActivity::class.java)) },
@@ -66,7 +64,6 @@ class HomeDashboardActivity : ComponentActivity() {
                     onNavigateAddReminder = { startActivity(Intent(this, AddReminderActivity::class.java)) },
                     onNavigateCalendar = { startActivity(Intent(this, GroomingCalendarActivity::class.java)) },
                     onNavigateGuides = { startActivity(Intent(this, GroomingGuideActivity::class.java)) },
-                    onNavigateAIChat = { startActivity(Intent(this, AIChatActivity::class.java)) },
                     onAddPet = { startActivity(Intent(this, SelectPetTypeActivity::class.java)) },
                     onNavigateProfile = { startActivity(Intent(this, PetDetailProfileActivity::class.java)) },
                     onNavigateSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
@@ -95,8 +92,6 @@ class HomeDashboardActivity : ComponentActivity() {
 fun MainSlidingDashboardScreen(
     viewModel: PetViewModel,
     onExitApp: () -> Unit,
-    onNavigatePhotoScan: () -> Unit,
-    onNavigateSymptomSelection: () -> Unit,
     onNavigateDietPlan: () -> Unit,
     onNavigateMealLog: () -> Unit,
     onNavigateSafeFoods: () -> Unit,
@@ -104,7 +99,6 @@ fun MainSlidingDashboardScreen(
     onNavigateAddReminder: () -> Unit,
     onNavigateCalendar: () -> Unit,
     onNavigateGuides: () -> Unit,
-    onNavigateAIChat: () -> Unit,
     onAddPet: () -> Unit,
     onNavigateProfile: () -> Unit,
     onNavigateSettings: () -> Unit
@@ -160,19 +154,25 @@ fun MainSlidingDashboardScreen(
         Scaffold(
             containerColor = SoftBackground,
             floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    onClick = onNavigateAIChat,
-                    containerColor = EmeraldPrimary,
-                    contentColor = Color.White,
-                    shape = RoundedCornerShape(24.dp),
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
-                    icon = {
-                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MintLight)
-                    },
-                    text = {
-                        Text("Ask AI", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    }
-                )
+                if (pagerState.currentPage != 1) {
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(1)
+                            }
+                        },
+                        containerColor = EmeraldPrimary,
+                        contentColor = Color.White,
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp),
+                        icon = {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MintLight)
+                        },
+                        text = {
+                            Text("Ask AI", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    )
+                }
             },
             floatingActionButtonPosition = FabPosition.End,
             bottomBar = {
@@ -199,10 +199,10 @@ fun MainSlidingDashboardScreen(
                         horizontalArrangement = Arrangement.SpaceAround,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val tabLabels = listOf("Home", "Health", "Diet", "Care", "Profile")
+                        val tabLabels = listOf("Home", "AI Pet Care", "Diet", "Care", "Profile")
                         val tabIcons = listOf(
                             Icons.Default.Home,
-                            Icons.Default.Favorite,
+                            Icons.Default.AutoAwesome,
                             Icons.Default.Restaurant,
                             Icons.Default.CalendarToday,
                             Icons.Default.Person
@@ -270,12 +270,19 @@ fun MainSlidingDashboardScreen(
                         onNavigateSettings = onNavigateSettings,
                         onAddPet = onAddPet
                     )
-                    1 -> HealthTabScreen(
-                        onNavigatePhotoScan = onNavigatePhotoScan,
-                        onNavigateSymptomSelection = onNavigateSymptomSelection,
-                        onNavigateAIChat = onNavigateAIChat
-                    )
+                    1 -> {
+                        val aiChatViewModel: AIChatViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                        AIChatScreen(
+                            viewModel = aiChatViewModel,
+                            onBack = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(0)
+                                }
+                            }
+                        )
+                    }
                     2 -> DietTabScreen(
+                        viewModel = viewModel,
                         onNavigateDietPlan = onNavigateDietPlan,
                         onNavigateMealLog = onNavigateMealLog,
                         onNavigateSafeFoods = onNavigateSafeFoods,
@@ -591,10 +598,10 @@ fun HomeTabScreen(
 
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             DashboardActionCard(
-                title = "AI Health Scan",
-                subtitle = "Check symptoms",
-                icon = Icons.Default.Favorite,
-                accentColor = AlertRose,
+                title = "AI Pet Care",
+                subtitle = "Ask AI Assistant",
+                icon = Icons.Default.AutoAwesome,
+                accentColor = MintSage,
                 modifier = Modifier.weight(1f),
                 onClick = onNavigateHealth
             )
@@ -783,201 +790,30 @@ fun DashboardActionCard(
 }
 
 // ============================================================================
-// Tab 1: Health & Diagnostics
-// ============================================================================
-@Composable
-fun HealthTabScreen(
-    onNavigatePhotoScan: () -> Unit,
-    onNavigateSymptomSelection: () -> Unit,
-    onNavigateAIChat: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp)
-    ) {
-        Text(
-            text = "Health & Diagnostics",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = EmeraldDark
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "AI-powered symptom checker & medical scans",
-            color = TextSecondary,
-            fontSize = 14.sp
-        )
-
-        Spacer(Modifier.height(24.dp))
-
-        // AI Camera Scan Hero Card
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(8.dp, RoundedCornerShape(24.dp), ambientColor = MintSage.copy(alpha = 0.3f))
-                .clip(RoundedCornerShape(24.dp))
-                .clickable { onNavigatePhotoScan() },
-            shape = RoundedCornerShape(24.dp),
-            color = Color.Transparent
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(PrimaryGradient)
-                    .padding(24.dp)
-            ) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.22f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.CameraAlt,
-                            contentDescription = "Scan",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                    Spacer(Modifier.height(18.dp))
-                    Text(
-                        text = "AI Camera Health Scan",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = "Capture skin, coat, or eye conditions for instant preliminary analysis",
-                        color = Color.White.copy(alpha = 0.88f),
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        // Symptom Selection Card
-        PetModernCard(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onNavigateSymptomSelection
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(AlertRose.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.HealthAndSafety,
-                        contentDescription = "Symptoms",
-                        tint = AlertRose,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Symptom Checklist",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = EmeraldDark
-                    )
-                    Text(
-                        text = "Select observed behavioral or physical signs",
-                        color = TextSecondary,
-                        fontSize = 13.sp
-                    )
-                }
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-
-        // AI Pet Care Chatbot Hero Card
-        PetModernCard(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = onNavigateAIChat,
-            containerColor = MintSoft
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MintSage),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.AutoAwesome,
-                        contentDescription = "AI Chat",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-                Spacer(Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "AI Pet Care Chatbot",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = EmeraldDark
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        PetBadge(text = "Qwen3-VL", containerColor = WarmPearl, contentColor = EmeraldPrimary)
-                    }
-                    Text(
-                        text = "Chat about diseases, nutrition, or upload photos",
-                        color = TextSecondary,
-                        fontSize = 13.sp
-                    )
-                }
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-    }
-}
-
-// ============================================================================
 // Tab 2: Diet & Nutrition
 // ============================================================================
 @Composable
 fun DietTabScreen(
+    viewModel: PetViewModel,
     onNavigateDietPlan: () -> Unit,
     onNavigateMealLog: () -> Unit,
     onNavigateSafeFoods: () -> Unit,
     onNavigateWeightTracker: () -> Unit
 ) {
+    val dietSummary by viewModel.dietSummary.collectAsState()
+    val activePet by viewModel.activePet.collectAsState()
+    val targetCalories = dietSummary?.targetCalories ?: 0
+    val consumedCalories = dietSummary?.consumedCalories ?: 0
+    val progressRatio = if (targetCalories > 0) (consumedCalories.toFloat() / targetCalories.toFloat()).coerceIn(0f, 1f) else 0f
+    val percentMet = if (targetCalories > 0) ((consumedCalories.toFloat() / targetCalories.toFloat()) * 100).toInt() else 0
+    val hasSchedule = (dietSummary?.hasSchedule == true) || (targetCalories > 0)
+
+    LaunchedEffect(activePet.id) {
+        val pId = activePet.id.toIntOrNull()
+        viewModel.loadMealSchedules(pId)
+        viewModel.loadDietSummary(pId)
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1025,11 +861,11 @@ fun DietTabScreen(
                             fontSize = 16.sp
                         )
                     }
-                    PetBadge(text = "81%", color = AmberAccent, textColor = Color(0xFF92400E))
+                    PetBadge(text = "$percentMet%", color = AmberAccent, textColor = Color(0xFF92400E))
                 }
                 Spacer(Modifier.height(16.dp))
                 LinearProgressIndicator(
-                    progress = { 0.81f },
+                    progress = { progressRatio },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(10.dp)
@@ -1042,8 +878,16 @@ fun DietTabScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Consumed: 650 kcal", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
-                    Text("Target: 800 kcal", fontSize = 13.sp, color = TextMuted)
+                    Text("Consumed: $consumedCalories kcal", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.SemiBold)
+                    Text("Target: $targetCalories kcal", fontSize = 13.sp, color = TextMuted)
+                }
+                if (!hasSchedule) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Set up your feeding schedule to view your daily calorie target.",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
                 }
             }
         }

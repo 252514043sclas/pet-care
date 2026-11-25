@@ -118,7 +118,9 @@ interface PetCareApiService {
     // Diet & Nutrition
     // ----------------------------------------------------
     @GET("diet/summary")
-    suspend fun getDietSummary(): Response<ApiResponse<DietSummaryDto>>
+    suspend fun getDietSummary(
+        @Query("pet_id") petId: Int? = null
+    ): Response<ApiResponse<DietSummaryDto>>
 
     @POST("diet/analyze-food")
     suspend fun analyzeFood(
@@ -235,14 +237,6 @@ interface PetCareApiService {
     // ----------------------------------------------------
     // Health & AI Diagnostics
     // ----------------------------------------------------
-    @GET("health/symptoms")
-    suspend fun getSymptoms(): Response<ApiResponse<List<String>>>
-
-    @POST("health/scan")
-    suspend fun runHealthScan(
-        @Body request: HealthScanRequest
-    ): Response<ApiResponse<HealthScanResultDto>>
-
     @GET("health/conditions")
     suspend fun getConditions(): Response<ApiResponse<List<ConditionGuideDto>>>
 

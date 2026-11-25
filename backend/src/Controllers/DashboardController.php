@@ -28,7 +28,7 @@ class DashboardController {
         $mealsToday = [];
         $remindersToday = [];
         $totalCalories = 0;
-        $targetCalories = 800;
+        $targetCalories = 0;
 
         if ($activePet) {
             $petId = (int)$activePet['id'];
@@ -56,6 +56,12 @@ class DashboardController {
             foreach ($mealsToday as $meal) {
                 $totalCalories += (int)$meal['calories'];
             }
+
+            // 3b. Fetch daily calorie target from meal schedules for this pet
+            $targetStmt = $pdo->prepare('SELECT COALESCE(SUM(calories), 0) as target_total FROM meal_schedules WHERE pet_id = :pet_id');
+            $targetStmt->execute([':pet_id' => $petId]);
+            $targetRow = $targetStmt->fetch(PDO::FETCH_ASSOC);
+            $targetCalories = (int)($targetRow['target_total'] ?? 0);
 
             // 4. Construct unified Today's Schedule for the Home Tab
             // Include top 2-3 reminders or meal schedules
@@ -89,14 +95,23 @@ class DashboardController {
             }
         }
 
+        $progressRatio = $targetCalories > 0 ? min(1.0, round($totalCalories / $targetCalories, 2)) : 0.0;
+        $progressPercentage = $targetCalories > 0 ? (int)round(($totalCalories / $targetCalories) * 100) : 0;
+        $remainingCalories = max(0, $targetCalories - $totalCalories);
+
         Response::success([
             'user' => $currentUser,
             'active_pet' => $activePet,
             'today_schedule' => $schedule,
             'diet_summary' => [
-                'consumed_calories' => $totalCalories ?: 650,
+                'consumed_calories' => $totalCalories,
                 'target_calories' => $targetCalories,
-                'progress_ratio' => min(1.0, round(($totalCalories ?: 650) / $targetCalories, 2)),
+                'remaining_calories' => $remainingCalories,
+                'progress_ratio' => $progressRatio,
+                'progress_percentage' => $progressPercentage,
+                'has_schedule' => $targetCalories > 0,
+                'message' => $targetCalories === 0 ? 'Set up your feeding schedule to view your daily calorie target.' : "Target: {$targetCalories} kcal/day",
+                'label' => $targetCalories === 0 ? '0 kcal / day' : "Consumed: {$totalCalories} / {$targetCalories} kcal",
             ],
             'reminders_count' => count($remindersToday),
             'meals_count' => count($mealsToday),
