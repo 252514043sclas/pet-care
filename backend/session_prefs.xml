@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <string name="key_auth_token">49bdf71db85efc2a594d7dea366d953b1660be8335fa26145e45db334a485301</string>
+    <int name="key_user_id" value="1" />
+    <string name="key_user_name">Kavya</string>
+    <string name="key_user_email">ammu@gamil.com</string>
+    <int name="key_active_pet_id" value="1" />
+    <string name="key_active_pet_name">Clover</string>
+    <string name="key_active_pet_type">Rabbit</string>
+    <string name="key_active_pet_breed">Holland Lop</string>
+    <string name="key_active_pet_age">1.2 yrs</string>
+    <string name="key_active_pet_weight">2.50</string>
+    <string name="key_active_pet_gender">Female</string>
+    <int name="key_active_pet_health_score" value="88" />
+    <string name="key_active_pet_vaccination">OVERDUE</string>
+    <boolean name="key_onboarding_completed" value="true" />
+    <string name="key_theme_mode">system</string>
+    <string name="key_font_size">normal</string>
+</map>

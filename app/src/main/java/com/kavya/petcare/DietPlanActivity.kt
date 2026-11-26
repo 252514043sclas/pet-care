@@ -546,9 +546,7 @@ private fun FeedingMealCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val meta = remember(schedule.mealName) {
-        getMealMeta(schedule.mealName)
-    }
+    val meta = getMealMeta(schedule.mealName)
 
     val isReminderOn = schedule.isReminderEnabled == 1
 
@@ -1205,6 +1203,7 @@ private data class MealMeta(
     val accentColor: Color
 )
 
+@Composable
 private fun getMealMeta(mealName: String): MealMeta {
     val lower = mealName.lowercase()
     return when {

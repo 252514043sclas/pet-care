@@ -12,6 +12,9 @@ use App\Utils\Validator;
 use PDO;
 
 class ChatController {
+    public const NON_PET_RESPONSE = "I'm a pet care assistant, so I can only help with pet-related questions.";
+    public const NON_PET_IMAGE_RESPONSE = "I'm a pet care assistant, so I can only analyze pet-related images.";
+
     private OllamaService $ollama;
     private SearchService $searchService;
 
@@ -65,6 +68,42 @@ class ChatController {
 
         // 1. Fetch active pet context if available
         $petContext = $this->resolvePetContext($pdo, (int)$currentUser['id'], $petId);
+        $actualPetId = $petContext['id'] ?? $petId;
+
+        // Fetch recent conversation history from DB (up to last 10 messages for continuous conversational context)
+        $history = $this->getRecentConversationHistory($pdo, (int)$currentUser['id'], $actualPetId, 10);
+
+        // Strict Domain Check: Restrict AI responses to pet-related topics only
+        if ($this->isUnrelatedToPets($userMessage, $petContext, $history)) {
+            $refusal = self::NON_PET_RESPONSE;
+            $userMsgId = $this->saveMessageToDb($pdo, [
+                'user_id' => (int)$currentUser['id'],
+                'pet_id' => $actualPetId,
+                'sender' => 'user',
+                'message' => $userMessage,
+                'message_type' => 'text'
+            ]);
+            $aiMsgId = $this->saveMessageToDb($pdo, [
+                'user_id' => (int)$currentUser['id'],
+                'pet_id' => $actualPetId,
+                'sender' => 'assistant',
+                'message' => $refusal,
+                'message_type' => 'text'
+            ]);
+
+            Response::success([
+                'message' => $refusal,
+                'message_id' => $aiMsgId,
+                'user_message_id' => $userMsgId,
+                'sender' => 'assistant',
+                'sources' => [],
+                'pet' => $petContext,
+                'model' => 'pet-domain-guard',
+                'elapsed_seconds' => 0.01,
+                'timestamp' => date('Y-m-d H:i:s')
+            ], 'Response generated');
+            return;
+        }
 
         // 2. Perform live internet search if required or requested
         $searchResults = [];
@@ -83,9 +122,6 @@ class ChatController {
         // 3. Build system prompt & message history
         $systemPrompt = $this->buildSystemPrompt($petContext, $searchContext);
 
-        // Fetch recent conversation history from DB (up to last 6 messages)
-        $history = $this->getRecentConversationHistory($pdo, (int)$currentUser['id'], $petId, 6);
-
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt]
         ];
@@ -103,7 +139,7 @@ class ChatController {
         // 4. Save User Message to Database
         $userMsgId = $this->saveMessageToDb($pdo, [
             'user_id' => (int)$currentUser['id'],
-            'pet_id' => $petId,
+            'pet_id' => $actualPetId,
             'sender' => 'user',
             'message' => $userMessage,
             'message_type' => 'text'
@@ -118,7 +154,7 @@ class ChatController {
             // Still save error notification to conversation
             $this->saveMessageToDb($pdo, [
                 'user_id' => (int)$currentUser['id'],
-                'pet_id' => $petId,
+                'pet_id' => $actualPetId,
                 'sender' => 'assistant',
                 'message' => $fallbackMessage,
                 'message_type' => 'error'
@@ -131,10 +167,19 @@ class ChatController {
 
         $aiContent = $aiResult['content'];
 
+        // Normalize if the model refused due to domain restrictions
+        if ($this->isAiRefusalResponse($aiContent)) {
+            $aiContent = self::NON_PET_RESPONSE;
+        } else {
+            // Strip any accidental leading disclaimer sentence from an actual pet answer
+            $aiContent = preg_replace('/^I\'m a pet care assistant[^\n.]*[.\n]*/i', '', $aiContent);
+            $aiContent = trim($aiContent);
+        }
+
         // 6. Save AI Response to Database
         $aiMsgId = $this->saveMessageToDb($pdo, [
             'user_id' => (int)$currentUser['id'],
-            'pet_id' => $petId,
+            'pet_id' => $actualPetId,
             'sender' => 'assistant',
             'message' => $aiContent,
             'message_type' => !empty($searchResults) ? 'web_search' : 'text',
@@ -217,18 +262,23 @@ class ChatController {
 
         $aiContent = $aiResult['content'];
 
-        // Extract structured metadata from response
-        $parsedMeta = $this->parseVisionResponse($aiContent);
+        if ($this->isNonPetImageResponse($aiContent)) {
+            $aiContent = self::NON_PET_IMAGE_RESPONSE;
+            $parsedMeta = null;
+        } else {
+            // Extract structured metadata from response
+            $parsedMeta = $this->parseVisionResponse($aiContent);
+        }
 
         // Save AI analysis response
         $aiMsgId = $this->saveMessageToDb($pdo, [
             'user_id' => (int)$currentUser['id'],
-            'pet_id' => $petId,
+            'pet_id' => $petContext['id'] ?? $petId,
             'sender' => 'assistant',
             'message' => $aiContent,
             'image_url' => $imageUrl,
             'message_type' => 'image_analysis',
-            'analysis_metadata' => json_encode($parsedMeta)
+            'analysis_metadata' => $parsedMeta ? json_encode($parsedMeta) : null
         ]);
 
         Response::success([
@@ -417,53 +467,212 @@ class ChatController {
     // ------------------------------------------------------------------------
 
     private function resolvePetContext(PDO $pdo, int $userId, ?int $petId): array {
-        if ($petId) {
-            $stmt = $pdo->prepare('SELECT id, name, species, breed, age_years, weight_kg, gender FROM pets WHERE id = :id AND user_id = :uid LIMIT 1');
+        $pet = null;
+        if ($petId && $petId > 0) {
+            $stmt = $pdo->prepare('SELECT id, name, species, breed, age_years, weight_kg, gender, health_score, vaccination_status, microchip_id FROM pets WHERE id = :id AND user_id = :uid LIMIT 1');
             $stmt->execute([':id' => $petId, ':uid' => $userId]);
             $pet = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($pet) {
-                return $pet;
-            }
         }
 
-        // Fallback to active pet
-        $stmt = $pdo->prepare('SELECT id, name, species, breed, age_years, weight_kg, gender FROM pets WHERE user_id = :uid ORDER BY is_active DESC LIMIT 1');
-        $stmt->execute([':uid' => $userId]);
-        $pet = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$pet) {
+            // Fallback to active pet of this user (enforcing user isolation)
+            $stmt = $pdo->prepare('SELECT id, name, species, breed, age_years, weight_kg, gender, health_score, vaccination_status, microchip_id FROM pets WHERE user_id = :uid AND is_active = 1 ORDER BY updated_at DESC LIMIT 1');
+            $stmt->execute([':uid' => $userId]);
+            $pet = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
 
-        return $pet ?: [
+        if (!$pet) {
+            // Any pet belonging to this user
+            $stmt = $pdo->prepare('SELECT id, name, species, breed, age_years, weight_kg, gender, health_score, vaccination_status, microchip_id FROM pets WHERE user_id = :uid ORDER BY id DESC LIMIT 1');
+            $stmt->execute([':uid' => $userId]);
+            $pet = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+
+        if ($pet) {
+            $pid = (int)$pet['id'];
+            // Fetch health records
+            $hStmt = $pdo->prepare('SELECT record_type, title, description, severity, notes, recorded_date FROM pet_health_records WHERE pet_id = :pid AND user_id = :uid ORDER BY id DESC LIMIT 5');
+            $hStmt->execute([':pid' => $pid, ':uid' => $userId]);
+            $pet['health_records'] = $hStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            // Fetch vaccinations
+            $vStmt = $pdo->prepare('SELECT vaccine_name, vaccination_date, next_due_date FROM pet_vaccinations WHERE pet_id = :pid ORDER BY id DESC LIMIT 5');
+            $vStmt->execute([':pid' => $pid]);
+            $pet['vaccinations'] = $vStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            return $pet;
+        }
+
+        return [
             'id' => null,
-            'name' => 'Pet',
+            'name' => 'your pet',
             'species' => 'Domestic Animal',
-            'breed' => 'General',
-            'age_years' => 'Adult',
+            'breed' => 'Unspecified',
+            'age_years' => 'Unspecified',
             'weight_kg' => 0,
-            'gender' => 'Unknown'
+            'gender' => 'Unspecified',
+            'health_score' => 100,
+            'vaccination_status' => 'Unknown',
+            'health_records' => [],
+            'vaccinations' => []
         ];
     }
 
     private function buildSystemPrompt(array $pet, string $searchContext): string {
-        $prompt = "You are 'PetCare AI', a knowledgeable, compassionate, and responsible veterinary educational assistant designed for pet owners.
-Active Pet Details:
-- Name: {$pet['name']}
-- Species: {$pet['species']}
-- Breed: {$pet['breed']}
-- Age: {$pet['age_years']}
-- Weight: " . ($pet['weight_kg'] > 0 ? "{$pet['weight_kg']} kg" : "Unspecified") . "
+        $petName = $pet['name'] ?? 'the pet';
+        $species = $pet['species'] ?? 'Domestic Animal';
+        $breed = $pet['breed'] ?? 'Mixed';
+        $age = $pet['age_years'] ?? 'Unknown';
+        $weight = ($pet['weight_kg'] > 0) ? "{$pet['weight_kg']} kg" : 'Not specified';
+        $gender = $pet['gender'] ?? 'Unknown';
+        $healthScore = $pet['health_score'] ?? 'N/A';
+        $vaxStatus = $pet['vaccination_status'] ?? 'Unknown';
 
-CORE MEDICAL & SAFETY DIRECTIVES:
-1. You provide educational guidance and preliminary triage; you are NOT a substitute for an in-person licensed veterinarian.
-2. If the user describes emergency symptoms (e.g., severe bleeding, choking, difficulty breathing, seizures, sudden paralysis, heat stroke, collapse, or ingestion of toxic poisons/antifreeze), immediately instruct the user to seek emergency veterinary hospitalization.
-3. Tailor all advice specifically to the pet's species ({$pet['species']}). What is safe for dogs may be lethal to cats or rabbits.
-4. Never recommend human OTC drugs (e.g., Acetaminophen/Paracetamol, Ibuprofen, Aspirin) as they are frequently toxic to pets.
-5. Structure answers cleanly using concise headings, bullet points, and practical advice.
-\n";
+        $healthSummary = "None recorded";
+        if (!empty($pet['health_records'])) {
+            $records = [];
+            foreach ($pet['health_records'] as $hr) {
+                $records[] = "{$hr['record_type']} - {$hr['title']}: {$hr['description']} (Severity: {$hr['severity']})";
+            }
+            $healthSummary = implode('; ', $records);
+        }
+
+        $vaxSummary = "None recorded";
+        if (!empty($pet['vaccinations'])) {
+            $vaxes = [];
+            foreach ($pet['vaccinations'] as $vx) {
+                $vaxes[] = "{$vx['vaccine_name']} (Date: {$vx['vaccination_date']}, Next Due: {$vx['next_due_date']})";
+            }
+            $vaxSummary = implode('; ', $vaxes);
+        }
+
+        $prompt = "You are 'PetCare AI', a specialized veterinary and pet-care assistant.
+Patient: {$petName}, a {$age} {$gender} {$species} ({$breed}), weight {$weight}. Overall Health Score: {$healthScore}/100. Vaccination Status: {$vaxStatus}. Medical History: {$healthSummary}. Active Vaccinations: {$vaxSummary}.
+
+INSTRUCTIONS:
+1. Speak directly to the pet owner using a compassionate, clear veterinary tone. Tailor all advice specifically to {$petName}'s species ({$species}), breed ({$breed}), age ({$age}), weight ({$weight}), and health records.
+2. For diet and nutrition, give clear safe foods, toxic foods to avoid, and safe portion guidance appropriate for {$species}.
+3. Focus exclusively on veterinary triage, pet health, nutrition, and behavior for {$petName}. Always address the pet owner directly with compassionate, professional guidance.
+4. If symptoms appear critical or life-threatening (e.g. collapse, seizures, severe bleeding, difficulty breathing, toxic ingestion, or refusal to eat hay leading to GI stasis), urge immediate emergency veterinary hospital attention.
+5. NEVER narrate your internal thinking or refer to 'the user' in the third person. Start your reply directly with helpful veterinary advice or answers.";
 
         if (!empty($searchContext)) {
             $prompt .= "\n" . $searchContext . "\n";
         }
 
         return $prompt;
+    }
+
+    /**
+     * Checks if a message is unambiguously unrelated to pets or animals.
+     */
+    private function isUnrelatedToPets(string $message, array $petContext, array $recentHistory): bool {
+        $msg = mb_strtolower(trim($message), 'UTF-8');
+
+        // Allow polite short conversational openers
+        if (in_array($msg, ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'help', 'start'], true)) {
+            return false;
+        }
+
+        // Check if pet's name is explicitly mentioned in the message
+        $petName = mb_strtolower($petContext['name'] ?? '', 'UTF-8');
+        if (!empty($petName) && mb_strlen($petName) >= 2 && str_contains($msg, $petName)) {
+            return false;
+        }
+
+        // Pet, animal, and veterinary vocabulary
+        $petKeywords = [
+            'pet', 'pets', 'dog', 'dogs', 'puppy', 'puppies', 'pup', 'canine', 'hound',
+            'cat', 'cats', 'kitten', 'kittens', 'kitty', 'feline',
+            'rabbit', 'rabbits', 'bunny', 'bunnies', 'hamster', 'hamsters', 'guinea pig', 'ferret',
+            'bird', 'birds', 'parrot', 'parrots', 'budgie', 'canary', 'finch', 'cockatiel',
+            'fish', 'goldfish', 'aquarium', 'turtle', 'reptile',
+            'vet', 'vets', 'veterinar', 'clinic', 'animal hospital',
+            'bark', 'barking', 'meow', 'meowing', 'purr', 'purring', 'tail', 'paws', 'fur', 'coat', 'claws', 'whiskers',
+            'leash', 'collar', 'harness', 'litter', 'crate', 'kennel',
+            'kibble', 'dog food', 'cat food', 'pet food', 'treats', 'chew', 'feeding', 'meal',
+            'flea', 'fleas', 'tick', 'ticks', 'worm', 'worms', 'deworm', 'rabies', 'parvo', 'distemper', 'vaccin',
+            'shedding', 'groom', 'grooming', 'neuter', 'neutering', 'spay', 'spaying',
+            'vomit', 'vomiting', 'diarrhea', 'letharg', 'limp', 'limping', 'scratch', 'scratching',
+            'itch', 'itching', 'drool', 'drooling', 'pant', 'panting', 'dehydrat', 'hair loss', 'losing hair',
+            'breed', 'pedigree', 'species', 'litterbox', 'potty', 'training', 'bite', 'biting',
+            'safe food', 'toxic food', 'can eat', 'cannot eat', 'choke', 'choking', 'swallowed', 'ear infection'
+        ];
+
+        foreach ($petKeywords as $kw) {
+            if (preg_match('/\b' . preg_quote($kw, '/') . '\b/i', $msg)) {
+                return false;
+            }
+        }
+
+        // Follow-up context check
+        if (!empty($recentHistory)) {
+            $followUpMarkers = [
+                'he', 'she', 'him', 'her', 'it', 'his', 'hers', 'they', 'them',
+                'symptom', 'vomit', 'eat', 'eating', 'food', 'medicine', 'pain', 'dose', 'portion',
+                'how much', 'how long', 'is that', 'what about', 'what should i do',
+                'yesterday', 'today', 'morning', 'night', 'fever', 'better', 'worse', 'still'
+            ];
+            foreach ($followUpMarkers as $marker) {
+                if (preg_match('/\b' . preg_quote($marker, '/') . '\b/i', $msg)) {
+                    return false;
+                }
+            }
+        }
+
+        // Patterns that clearly indicate general knowledge, programming, math, politics, trivia, or non-pet domains
+        $unrelatedPatterns = [
+            '/(what is|what\'s|tell me) (the )?capital of\b/i',
+            '/(who is|who\'s) (the )?(president|prime minister|governor|king|queen|ceo)\b/i',
+            '/who won (the )?(world cup|super bowl|election|oscar|match|game|ipl|olympics)\b/i',
+            '/\b(write|create|generate|debug|explain)\s+(code|a? ?python|a? ?javascript|a? ?java|a? ?sql|a? ?c\+\+|a? ?html|a? ?css|a? ?script|a? ?function|an? ?algorithm)\b/i',
+            '/\b(solve|calculate|evaluate)\s+(\d+|\bequation\b|\bmath\b|\bintegral\b)/i',
+            '/how many (countries|states|continents|planets|elements)\b/i',
+            '/what is the meaning of life\b/i',
+            '/tell me a joke about (computers|engineers|politicians|programmers)\b/i',
+            '/\b(stock price|bitcoin|cryptocurrency|crypto market|nasdaq|forex)\b/i',
+            '/\b(capital of \w+|currency of \w+|president of \w+|prime minister of \w+)\b/i',
+            '/who (invented|discovered)\b/i',
+            '/when was [a-z0-9 ]+ (born|founded|built|released)\b/i',
+            '/\b(movie review|box office|lyrics of|synopsis of)\b/i',
+            '/(what is|who is|where is)\s+(the )?(weather|temperature|forecast|population of)\b/i',
+            '/\b(photosynthesis|shakespeare|quantum|blockchain|machine learning|react native|flutter|database index|nginx|apache configuration)\b/i'
+        ];
+
+        foreach ($unrelatedPatterns as $pattern) {
+            if (preg_match($pattern, $msg)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isAiRefusalResponse(string $text): bool {
+        $trimmed = trim($text);
+        // A genuine domain refusal is concise (under 160 characters). Long answers containing clinical explanations are not refusals.
+        if (mb_strlen($trimmed) > 160) {
+            return false;
+        }
+        $lower = mb_strtolower($trimmed, 'UTF-8');
+        if (str_contains($lower, "i'm a pet care assistant") || 
+            str_contains($lower, "i am a pet care assistant") ||
+            (str_contains($lower, "pet care assistant") && (str_contains($lower, "only") || str_contains($lower, "cannot")))) {
+            return true;
+        }
+        return false;
+    }
+
+    private function isNonPetImageResponse(string $text): bool {
+        $lower = mb_strtolower($text, 'UTF-8');
+        if (str_contains($lower, "only analyze pet-related images") || 
+            str_contains($lower, "does not appear to be a pet") ||
+            str_contains($lower, "does not show a pet") ||
+            str_contains($lower, "no animal or pet") ||
+            (str_contains($lower, "pet care assistant") && str_contains($lower, "only analyze"))) {
+            return true;
+        }
+        return false;
     }
 
     private function getRecentConversationHistory(PDO $pdo, int $userId, ?int $petId, int $limit): array {

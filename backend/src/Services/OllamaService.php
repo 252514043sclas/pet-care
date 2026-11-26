@@ -75,24 +75,85 @@ class OllamaService {
      * General chat completion
      */
     public function chat(array $messages, array $extraOptions = []): array {
+        // Build ChatML prompt with prefilled <think>\n</think>\n to bypass prolonged thinking loops on CPU
+        $prompt = '';
+        foreach ($messages as $msg) {
+            $role = $msg['role'];
+            $content = $msg['content'];
+            $prompt .= "<|im_start|>{$role}\n{$content}<|im_end|>\n";
+        }
+        $prompt .= "<|im_start|>assistant\n<think>\n</think>\n";
+
         $options = array_merge([
             'num_gpu' => $this->numGpu,
             'num_thread' => $this->numThreads,
-            'num_ctx' => 2048,   // Optimal context size for CPU cache efficiency
-            'num_predict' => 600, // Focused, high-speed response
-            'temperature' => 0.5,
+            'num_ctx' => 2048,
+            'num_predict' => 450,
+            'temperature' => 0.2,
             'top_p' => 0.9,
             'top_k' => 40,
         ], $extraOptions);
 
         $payload = [
             'model' => $this->model,
-            'messages' => $messages,
+            'prompt' => $prompt,
+            'raw' => true,
             'options' => $options,
             'stream' => false
         ];
 
-        return $this->sendChatRequest($payload);
+        return $this->sendGenerateRequest($payload);
+    }
+
+    private function sendGenerateRequest(array $payload): array {
+        @set_time_limit(300);
+        @ini_set('max_execution_time', '300');
+
+        $ch = curl_init("{$this->baseUrl}/api/generate");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 240);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+
+        $t0 = microtime(true);
+        $raw = curl_exec($ch);
+        $elapsed = round(microtime(true) - $t0, 2);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || empty($raw)) {
+            $errMsg = $error ?: "Ollama returned HTTP {$httpCode}";
+            return [
+                'success' => false,
+                'error' => $errMsg,
+                'raw' => $raw,
+                'elapsed' => $elapsed
+            ];
+        }
+
+        $data = json_decode($raw, true);
+        $content = trim($data['response'] ?? '');
+
+        // Remove raw thinking blocks if emitted inside content
+        if (!empty($content)) {
+            $content = preg_replace('/<think>.*?<\/think>/is', '', $content);
+            $content = preg_replace('/^(?:(?:The user|First,?\s*I need|Wait|From the dossier|Let me|Okay|As a|I need to|I will|I should)[^\n]*\n*)+/is', '', trim($content));
+            $content = trim($content);
+        }
+
+        return [
+            'success' => true,
+            'content' => $content,
+            'model' => $data['model'] ?? $this->model,
+            'total_duration' => $data['total_duration'] ?? 0,
+            'eval_count' => $data['eval_count'] ?? 0,
+            'elapsed' => $elapsed
+        ];
     }
 
     /**
@@ -101,21 +162,25 @@ class OllamaService {
     public function analyzeImage(string $imageBase64, string $prompt, array $petContext = []): array {
         $petSpecies = $petContext['species'] ?? 'pet';
         $petName = $petContext['name'] ?? 'the pet';
-        $petAge = $petContext['age'] ?? 'unknown age';
+        $petAge = $petContext['age_years'] ?? ($petContext['age'] ?? 'unknown age');
         $petBreed = $petContext['breed'] ?? 'unknown breed';
+        $petWeight = !empty($petContext['weight_kg']) ? "{$petContext['weight_kg']} kg" : 'unknown weight';
 
         $systemPrompt = "You are a professional, compassionate veterinary AI assistant specializing in clinical triage and pet health education.
-Pet Context: Name: {$petName}, Species: {$petSpecies}, Breed: {$petBreed}, Age: {$petAge}.
+Pet Context: Name: {$petName}, Species: {$petSpecies}, Breed: {$petBreed}, Age: {$petAge}, Weight: {$petWeight}.
 
 CRITICAL VETERINARY DIRECTIVES:
-1. Examine the image carefully for visible anatomical features, skin abnormalities, wounds, lesions, swelling, parasites, or inflammation.
-2. NEVER claim that an image alone confirms a medical diagnosis.
-3. NEVER state confidence scores as clinically validated probabilities.
-4. If the photograph is blurry, dark, or unclear, politely advise the user to provide a clearer, well-lit photo.
-5. If severe signs are detected (such as deep active bleeding, respiratory distress, pale gums, profound trauma, severe burns, or neurological symptoms), immediately mark Severity as 'Emergency' and instruct the user to seek immediate emergency veterinary hospital attention.
+1. Examine the image carefully for visible anatomical features, skin abnormalities, wounds, lesions, swelling, parasites, posture, or inflammation.
+2. Consider {$petName}'s species ({$petSpecies}) and breed ({$petBreed}) in your visual assessment.
+3. If the image DOES NOT show a pet or animal (e.g. human face, scenery, vehicle, document, or food for humans), reply with EXACTLY:
+\"I'm a pet care assistant, so I can only analyze pet-related images.\"
+4. NEVER claim that an image alone confirms a medical diagnosis.
+5. NEVER state confidence scores as clinically validated probabilities.
+6. If the photograph is blurry, dark, or unclear, politely advise the user to provide a clearer, well-lit photo.
+7. If severe signs are detected (such as deep active bleeding, respiratory distress, pale gums, profound trauma, severe burns, or neurological symptoms), immediately mark Severity as 'Emergency' and instruct the user to seek immediate emergency veterinary hospital attention.
 
 You MUST structure your response strictly in the following format:
-- Pet type: [Identified animal and observed breed characteristics]
+- Pet type: [Identified animal and observed breed characteristics, e.g. {$petSpecies} / {$petBreed}]
 - Visible observations: [Objective description of visible skin, coat, wound, swelling, eyes, or condition]
 - Possible conditions: [Potential differential diagnoses to discuss with a vet, e.g., superficial dermatitis, hot spot, laceration, etc.]
 - Severity: [Choose one: Low, Moderate, High, or Emergency]
@@ -147,7 +212,7 @@ You MUST structure your response strictly in the following format:
                 'num_gpu' => $this->numGpu,
                 'num_thread' => $this->numThreads,
                 'num_ctx' => 2048,
-                'num_predict' => 650,
+                'num_predict' => 850,
                 'temperature' => 0.2, // Fast, deterministic visual triage
                 'top_p' => 0.9,
                 'top_k' => 40
@@ -192,20 +257,28 @@ You MUST structure your response strictly in the following format:
         $data = json_decode($raw, true);
         $content = trim($data['message']['content'] ?? '');
 
+        // Remove raw thinking blocks if emitted inside content
+        if (!empty($content)) {
+            $content = preg_replace('/<think>.*?<\/think>/is', '', $content);
+            // Remove leading third-person narrator internal monologue if emitted
+            $content = preg_replace('/^(?:(?:The user|First,?\s*I need|Wait|From the dossier|Let me|Okay|As a|I need to|I will|I should)[^\n]*\n*)+/is', '', trim($content));
+            $content = trim($content);
+        }
+
         // Fallback: if model's reasoning filled thinking before final content tag
         if (empty($content) && !empty($data['message']['thinking'])) {
             $thinking = trim($data['message']['thinking']);
             
             // Extract drafted final answer if marked inside thinking
-            if (preg_match('/(?:Final answer|Response|Here is the response|In summary|Summary|Here are the|Answer)[:\s*\n]+(.*)$/is', $thinking, $match)) {
+            if (preg_match('/(?:Final answer|Response|Here is the response|In summary|Summary|Here are the|Answer|Advice)[:\s*\n]+(.*)$/is', $thinking, $match)) {
                 $content = trim($match[1]);
-            } elseif (preg_match('/(#{1,3}\s+[^\n]+.*)$/is', $thinking, $match)) {
+            } elseif (preg_match('/((?:#{1,3}|\*|\-)\s+[^\n]+.*)$/is', $thinking, $match)) {
                 $content = trim($match[1]);
-            } elseif (preg_match('/(- (?:Pet type|Common diseases|First aid|Ingredients|Diet|Visible).*)$/is', $thinking, $match)) {
+            } elseif (preg_match('/((?:For |If |Common |Rabbits |Dogs |Cats |Safe |To care |When to ).*)$/is', $thinking, $match)) {
                 $content = trim($match[1]);
             } else {
-                // Clean leading internal reasoning monologue
-                $cleaned = preg_replace('/^(?:Okay|Let\'s|Hmm|Alright|So)[^.\n]*[.\n]+\s*/i', '', $thinking);
+                // Strip all third-person monologue sentences
+                $cleaned = preg_replace('/^(?:(?:The user|First,? I|Wait,?|From the dossier|Let me|Okay,?|Hmm,?)[^\n]*\n*)+/is', '', $thinking);
                 $content = !empty(trim($cleaned)) ? trim($cleaned) : $thinking;
             }
         }

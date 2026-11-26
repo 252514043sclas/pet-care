@@ -2,6 +2,9 @@ package com.kavya.petcare.data.session
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 class SessionManager private constructor(context: Context) {
     private val prefs: SharedPreferences =
@@ -27,6 +30,8 @@ class SessionManager private constructor(context: Context) {
         private const val KEY_ACTIVE_PET_VACCINATION = "key_active_pet_vaccination"
         private const val KEY_BASE_URL = "key_base_url"
         private const val KEY_ONBOARDING_COMPLETED = "key_onboarding_completed"
+        private const val KEY_THEME_MODE = "key_theme_mode"
+        private const val KEY_FONT_SIZE = "key_font_size"
 
         @Volatile
         private var INSTANCE: SessionManager? = null
@@ -168,6 +173,37 @@ class SessionManager private constructor(context: Context) {
 
     fun setOnboardingCompleted(completed: Boolean) {
         prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
+    }
+
+    // Appearance Preferences Flow & Storage
+    private val _themeModeFlow = MutableStateFlow(getThemeMode())
+    val themeModeFlow: StateFlow<String> = _themeModeFlow.asStateFlow()
+
+    private val _fontSizeFlow = MutableStateFlow(getFontSize())
+    val fontSizeFlow: StateFlow<String> = _fontSizeFlow.asStateFlow()
+
+    fun getThemeMode(): String = prefs.getString(KEY_THEME_MODE, "system") ?: "system"
+
+    fun setThemeMode(mode: String) {
+        val normalized = when (mode.lowercase()) {
+            "light" -> "light"
+            "dark" -> "dark"
+            else -> "system"
+        }
+        prefs.edit().putString(KEY_THEME_MODE, normalized).apply()
+        _themeModeFlow.value = normalized
+    }
+
+    fun getFontSize(): String = prefs.getString(KEY_FONT_SIZE, "normal") ?: "normal"
+
+    fun setFontSize(size: String) {
+        val normalized = when (size.lowercase()) {
+            "small" -> "small"
+            "large" -> "large"
+            else -> "normal"
+        }
+        prefs.edit().putString(KEY_FONT_SIZE, normalized).apply()
+        _fontSizeFlow.value = normalized
     }
 
     fun clearSession() {

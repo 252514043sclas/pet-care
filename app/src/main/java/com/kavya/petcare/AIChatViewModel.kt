@@ -50,7 +50,30 @@ class AIChatViewModel(application: Application) : AndroidViewModel(application) 
 
     fun loadActivePet() {
         val pet = sessionManager.getActivePetDetails()
-        _activePet.value = pet
+        if (pet != null) {
+            _activePet.value = pet
+        }
+        viewModelScope.launch {
+            repository.getPets().onSuccess { petsList ->
+                if (petsList.isNotEmpty()) {
+                    val activeId = sessionManager.getActivePetId()
+                    val matched = petsList.find { it.id == activeId } ?: petsList.first()
+                    _activePet.value = matched
+                    sessionManager.saveActivePetDetails(
+                        id = matched.id,
+                        name = matched.name,
+                        type = matched.species,
+                        breed = matched.breed,
+                        age = matched.ageYears,
+                        weight = matched.weightKg.toString(),
+                        imageUrl = matched.imageUrl,
+                        gender = matched.gender,
+                        healthScore = matched.healthScore,
+                        vaccinationStatus = matched.vaccinationStatus
+                    )
+                }
+            }
+        }
     }
 
     fun checkHealth() {
@@ -65,19 +88,21 @@ class AIChatViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            val currentPetId = _activePet.value?.id
+            val currentPetId = _activePet.value?.id ?: sessionManager.getActivePetId() ?: sessionManager.getActivePetId()
             repository.getChatHistory(petId = currentPetId).fold(
                 onSuccess = { historyList ->
                     if (historyList.isEmpty()) {
                         // Insert friendly welcome greeting
-                        val petName = _activePet.value?.name ?: "your pet"
-                        val species = _activePet.value?.species ?: "pet"
+                        val pet = _activePet.value
+                        val petName = pet?.name ?: "your pet"
+                        val species = pet?.species ?: "pet"
+                        val breed = pet?.breed ?: ""
+                        val petDesc = if (breed.isNotBlank() && breed != "Mixed") "$petName ($species • $breed)" else "$petName ($species)"
                         val welcomeMsg = ChatMessageDto(
                             id = 0,
                             sender = "assistant",
-                            message = "Hello! I am your AI Pet Care Assistant powered by local Qwen3-VL 2B. " +
-                                    "I can assist with health triage for $petName ($species), common diseases, wound care, " +
-                                    "safe nutrition and homemade meal planning. You can also upload photos of any affected skin or coat for visual analysis!",
+                            message = "Hello! I am your AI Pet Care Assistant for $petDesc. " +
+                                    "You can ask me any pet-related question about health, nutrition, symptoms, behavior, or grooming, or upload a photo for visual analysis. How can I help you today?",
                             messageType = "text",
                             createdAt = "Just now"
                         )
@@ -121,7 +146,7 @@ class AIChatViewModel(application: Application) : AndroidViewModel(application) 
 
         if (trimmed.isEmpty()) return
 
-        val currentPetId = _activePet.value?.id
+        val currentPetId = _activePet.value?.id ?: sessionManager.getActivePetId()
 
         // Optimistically add user message to UI
         val tempUserMsg = ChatMessageDto(
@@ -164,7 +189,7 @@ class AIChatViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     private fun sendImageMessage(imageBase64: String, prompt: String) {
-        val currentPetId = _activePet.value?.id
+        val currentPetId = _activePet.value?.id ?: sessionManager.getActivePetId()
         val displayPrompt = if (prompt.isNotBlank()) prompt else "Uploaded pet photo for health assessment."
 
         // Optimistically add message
@@ -213,7 +238,7 @@ class AIChatViewModel(application: Application) : AndroidViewModel(application) 
         val trimmed = query.trim()
         if (trimmed.isEmpty()) return
 
-        val currentPetId = _activePet.value?.id
+        val currentPetId = _activePet.value?.id ?: sessionManager.getActivePetId()
         val tempUserMsg = ChatMessageDto(
             id = System.currentTimeMillis().toInt(),
             sender = "user",
@@ -252,7 +277,7 @@ class AIChatViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun clearHistory() {
-        val currentPetId = _activePet.value?.id
+        val currentPetId = _activePet.value?.id ?: sessionManager.getActivePetId()
         viewModelScope.launch {
             _isLoading.value = true
             repository.clearChatHistory(petId = currentPetId).fold(

@@ -12,10 +12,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kavya.petcare.data.models.ChatMessageDto
+import com.kavya.petcare.data.models.PetDto
 import com.kavya.petcare.data.models.SearchSourceDto
 import com.kavya.petcare.data.models.VisionMetadataDto
 import com.kavya.petcare.data.network.NetworkConfig
@@ -49,6 +51,7 @@ import com.kavya.petcare.ui.*
 import com.kavya.petcare.ui.components.PetAvatar
 import com.kavya.petcare.ui.components.PetImageLoader
 import com.kavya.petcare.ui.theme.PetCareTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class AIChatActivity : ComponentActivity() {
@@ -117,6 +120,10 @@ fun AIChatScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.loadActivePet()
+    }
+
     // Auto-scroll to bottom on new messages
     LaunchedEffect(messages.size, isLoading) {
         if (messages.isNotEmpty()) {
@@ -149,7 +156,7 @@ fun AIChatScreen(
                     Text("Cancel", color = EmeraldDark)
                 }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -160,7 +167,7 @@ fun AIChatScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding(),
-                color = Color.White,
+                color = WarmPearl,
                 shadowElevation = 3.dp,
                 border = BorderStroke(1.dp, BorderSubtle)
             ) {
@@ -240,6 +247,9 @@ fun AIChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Active Connected Pet Profile Banner
+            ActivePetHeader(pet = activePet)
+
             // Error banner if any
             AnimatedVisibility(visible = errorMessage != null) {
                 Surface(
@@ -296,44 +306,7 @@ fun AIChatScreen(
 
                 if (isLoading) {
                     item {
-                        AITypingIndicator()
-                    }
-                }
-            }
-
-            // Quick Prompt Suggestion Chips (when no input)
-            if (textInput.isBlank() && selectedImageBitmap == null) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    val promptChips = listOf(
-                        "Common dog diseases" to "What are the common diseases in dogs and their prevention?",
-                        "Cat wound care" to "How can I care for a small superficial wound or cut on my cat?",
-                        "Rabbit carrot safety" to "Can rabbits eat carrots? What is a safe portion?",
-                        "Healthy meal plan" to "Can you provide a healthy homemade meal plan for my pet?",
-                        "Foods toxic to cats" to "What human foods are toxic to cats and should be avoided?"
-                    )
-                    items(promptChips) { (chipTitle, promptText) ->
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = Color.White,
-                            border = BorderStroke(1.dp, MintSage.copy(alpha = 0.4f)),
-                            modifier = Modifier.clickable {
-                                viewModel.sendMessage(promptText)
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MintSage, modifier = Modifier.size(14.dp))
-                                Spacer(Modifier.width(6.dp))
-                                Text(chipTitle, fontSize = 12.sp, color = EmeraldDark, fontWeight = FontWeight.Medium)
-                            }
-                        }
+                        AITypingIndicator(petName = activePet?.name ?: "your pet")
                     }
                 }
             }
@@ -345,7 +318,7 @@ fun AIChatScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
+                    color = WarmPearl,
                     shadowElevation = 4.dp,
                     border = BorderStroke(1.5.dp, MintSage)
                 ) {
@@ -371,7 +344,7 @@ fun AIChatScreen(
                                 Text("Tap Send to analyze with Qwen3-VL 2B", fontSize = 11.sp, color = TextSecondary)
                             }
                         }
-                        IconButton(onClick = { viewModel.clearSelectedImage() }) {
+                        IconButton(onClick = { viewModel.clearSelectedImage() }, enabled = !isLoading) {
                             Icon(Icons.Default.Close, contentDescription = "Remove", tint = AlertRose)
                         }
                     }
@@ -384,7 +357,7 @@ fun AIChatScreen(
                     .fillMaxWidth()
                     .imePadding()
                     .navigationBarsPadding(),
-                color = Color.White,
+                color = WarmPearl,
                 shadowElevation = 8.dp,
                 border = BorderStroke(1.dp, BorderSubtle)
             ) {
@@ -397,17 +370,27 @@ fun AIChatScreen(
                     // Camera Action
                     IconButton(
                         onClick = { cameraLauncher.launch(null) },
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(38.dp),
+                        enabled = !isLoading
                     ) {
-                        Icon(Icons.Default.CameraAlt, contentDescription = "Take Photo", tint = MintSage)
+                        Icon(
+                            Icons.Default.CameraAlt,
+                            contentDescription = "Take Photo",
+                            tint = if (!isLoading) MintSage else TextMuted
+                        )
                     }
 
                     // Gallery Action
                     IconButton(
                         onClick = { galleryLauncher.launch("image/*") },
-                        modifier = Modifier.size(38.dp)
+                        modifier = Modifier.size(38.dp),
+                        enabled = !isLoading
                     ) {
-                        Icon(Icons.Default.Image, contentDescription = "Pick Image", tint = MintSage)
+                        Icon(
+                            Icons.Default.Image,
+                            contentDescription = "Pick Image",
+                            tint = if (!isLoading) MintSage else TextMuted
+                        )
                     }
 
                     Spacer(Modifier.width(4.dp))
@@ -419,9 +402,12 @@ fun AIChatScreen(
                         modifier = Modifier
                             .weight(1f)
                             .heightIn(min = 44.dp, max = 110.dp),
+                        enabled = !isLoading,
                         placeholder = {
                             Text(
-                                if (selectedImageBitmap != null) "Add notes for visual scan..." else "Ask symptoms, care, nutrition...",
+                                text = if (isLoading) "Waiting for AI response..."
+                                else if (selectedImageBitmap != null) "Add notes for visual scan..."
+                                else "Ask questions about ${activePet?.name ?: "your pet"}...",
                                 fontSize = 13.sp,
                                 color = TextMuted
                             )
@@ -431,7 +417,9 @@ fun AIChatScreen(
                             focusedBorderColor = MintSage,
                             unfocusedBorderColor = BorderSubtle,
                             focusedContainerColor = SoftBackground,
-                            unfocusedContainerColor = SoftBackground
+                            unfocusedContainerColor = SoftBackground,
+                            disabledContainerColor = SoftBackground.copy(alpha = 0.6f),
+                            disabledBorderColor = BorderSubtle.copy(alpha = 0.6f)
                         ),
                         maxLines = 4
                     )
@@ -512,7 +500,7 @@ fun ChatMessageBubble(
                     bottomStart = if (isUser) 18.dp else 4.dp,
                     bottomEnd = if (isUser) 4.dp else 18.dp
                 ),
-                color = if (isUser) EmeraldPrimary else Color.White,
+                color = if (isUser) EmeraldPrimary else WarmPearl,
                 shadowElevation = if (isUser) 2.dp else 3.dp,
                 border = if (!isUser) BorderStroke(1.dp, BorderSubtle) else null
             ) {
@@ -683,25 +671,148 @@ fun SearchSourceChip(
 }
 
 @Composable
-fun AITypingIndicator() {
+fun ActivePetHeader(pet: PetDto?) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = WarmPearl,
+        border = BorderStroke(1.dp, MintSage.copy(alpha = 0.3f)),
+        shadowElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(MintSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!pet?.imageUrl.isNullOrBlank()) {
+                    ChatNetworkImage(
+                        imageUrl = pet!!.imageUrl!!,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        Icons.Default.Pets,
+                        contentDescription = null,
+                        tint = MintSage,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = pet?.name ?: "Active Pet",
+                        fontSize = 13.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = EmeraldDark
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color(0xFFE8F5E9)
+                    ) {
+                        Text(
+                            text = "● Active Context",
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF2E7D32),
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                val details = if (pet != null) {
+                    buildString {
+                        if (pet.species.isNotBlank()) append(pet.species)
+                        if (pet.breed.isNotBlank() && pet.breed != "Mixed") append(" • ${pet.breed}")
+                        if (pet.ageYears.isNotBlank()) append(" • ${pet.ageYears}")
+                        if (pet.weightKg > 0) append(" • ${pet.weightKg} kg")
+                    }
+                } else ""
+                Text(
+                    text = if (details.isNotBlank()) details else "Tailored veterinary intelligence active",
+                    fontSize = 11.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AITypingIndicator(petName: String) {
+    val phrases = remember(petName) {
+        listOf(
+            "Thinking...",
+            "Processing your request...",
+            "Analyzing $petName's health profile...",
+            "Consulting veterinary guidelines...",
+            "Formulating personalized care advice..."
+        )
+    }
+
+    var phraseIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2200)
+            phraseIndex = (phraseIndex + 1) % phrases.size
+        }
+    }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "thinking_pulse")
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+
     Row(
-        modifier = Modifier.padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(34.dp)
                 .clip(CircleShape)
                 .background(MintSoft),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MintSage, modifier = Modifier.size(16.dp))
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = MintSage,
+                modifier = Modifier
+                    .size(18.dp)
+                    .graphicsLayer(alpha = alpha)
+            )
         }
         Spacer(Modifier.width(8.dp))
         Surface(
             shape = RoundedCornerShape(14.dp),
-            color = Color.White,
-            border = BorderStroke(1.dp, BorderSubtle),
+            color = WarmPearl,
+            border = BorderStroke(1.dp, MintSage.copy(alpha = 0.35f)),
             shadowElevation = 2.dp
         ) {
             Row(
@@ -713,13 +824,21 @@ fun AITypingIndicator() {
                     color = MintSage,
                     strokeWidth = 2.dp
                 )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "Qwen3-VL 2B is analyzing...",
-                    fontSize = 12.sp,
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Medium
-                )
+                Spacer(Modifier.width(10.dp))
+                AnimatedContent(
+                    targetState = phrases[phraseIndex],
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                    },
+                    label = "status_text"
+                ) { text ->
+                    Text(
+                        text = text,
+                        fontSize = 12.sp,
+                        color = EmeraldDark,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }

@@ -64,6 +64,7 @@ class HomeDashboardActivity : ComponentActivity() {
                     onNavigateAddReminder = { startActivity(Intent(this, AddReminderActivity::class.java)) },
                     onNavigateCalendar = { startActivity(Intent(this, GroomingCalendarActivity::class.java)) },
                     onNavigateGuides = { startActivity(Intent(this, GroomingGuideActivity::class.java)) },
+                    onNavigateAIChat = { startActivity(Intent(this, AIChatActivity::class.java)) },
                     onAddPet = { startActivity(Intent(this, SelectPetTypeActivity::class.java)) },
                     onNavigateProfile = { startActivity(Intent(this, PetDetailProfileActivity::class.java)) },
                     onNavigateSettings = { startActivity(Intent(this, SettingsActivity::class.java)) }
@@ -99,6 +100,7 @@ fun MainSlidingDashboardScreen(
     onNavigateAddReminder: () -> Unit,
     onNavigateCalendar: () -> Unit,
     onNavigateGuides: () -> Unit,
+    onNavigateAIChat: () -> Unit,
     onAddPet: () -> Unit,
     onNavigateProfile: () -> Unit,
     onNavigateSettings: () -> Unit
@@ -142,7 +144,7 @@ fun MainSlidingDashboardScreen(
                     Text("Stay", color = EmeraldDark, fontWeight = FontWeight.SemiBold)
                 }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(22.dp)
         )
     }
@@ -189,7 +191,7 @@ fun MainSlidingDashboardScreen(
                             spotColor = Color(0x2E0D3B2E)
                         ),
                     shape = RoundedCornerShape(32.dp),
-                    color = Color.White,
+                    color = WarmPearl,
                     border = BorderStroke(1.dp, BorderSubtle)
                 ) {
                     Row(
@@ -396,7 +398,7 @@ fun HomeTabScreen(
                     Text("Close", color = TextSecondary)
                 }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(22.dp)
         )
     }
@@ -449,7 +451,7 @@ fun HomeTabScreen(
                         .clip(CircleShape)
                         .clickable { onNavigateSettings() },
                     shape = CircleShape,
-                    color = Color.White,
+                    color = WarmPearl,
                     shadowElevation = 3.dp,
                     border = BorderStroke(1.dp, BorderSubtle)
                 ) {

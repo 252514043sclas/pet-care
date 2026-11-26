@@ -87,6 +87,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val session = remember { SessionManager.getInstance(context) }
+    val currentThemeMode by session.themeModeFlow.collectAsState()
+    val currentFontSize by session.fontSizeFlow.collectAsState()
     val allPets by viewModel.allPets.collectAsState()
     val preferences by viewModel.preferences.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -213,7 +215,7 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showEditProfileDialog = false }) { Text("Cancel", color = Color.Gray) }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -305,7 +307,7 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showChangePasswordDialog = false }) { Text("Cancel", color = Color.Gray) }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -336,7 +338,7 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { petToDelete = null }) { Text("Cancel", color = Color.Gray) }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -416,7 +418,7 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showReportProblemDialog = false }) { Text("Cancel", color = Color.Gray) }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -457,7 +459,7 @@ fun SettingsScreen(
                     Text("Close")
                 }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -495,7 +497,7 @@ fun SettingsScreen(
                     Text("Got It")
                 }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -522,7 +524,7 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel", color = Color.Gray) }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -572,7 +574,7 @@ fun SettingsScreen(
                     Text("Camera")
                 }
             },
-            containerColor = Color.White,
+            containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -836,10 +838,32 @@ fun SettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 listOf("system" to "System", "light" to "Light", "dark" to "Dark").forEach { (mode, label) ->
+                                    val isSelected = currentThemeMode.equals(mode, ignoreCase = true)
                                     FilterChip(
-                                        selected = preferences.themeMode == mode,
-                                        onClick = { viewModel.updatePreferences(mapOf("theme_mode" to mode)) },
-                                        label = { Text(label, fontSize = 12.sp) },
+                                        selected = isSelected,
+                                        onClick = {
+                                            session.setThemeMode(mode)
+                                            viewModel.updatePreferences(mapOf("theme_mode" to mode))
+                                        },
+                                        label = {
+                                            Text(
+                                                text = label,
+                                                fontSize = 12.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MintSage,
+                                            selectedLabelColor = Color.White,
+                                            containerColor = Color.Transparent,
+                                            labelColor = TextPrimary
+                                        ),
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = true,
+                                            selected = isSelected,
+                                            borderColor = BorderSubtle,
+                                            selectedBorderColor = MintSage
+                                        ),
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -853,10 +877,33 @@ fun SettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 listOf("small" to "Small", "normal" to "Default", "large" to "Large").forEach { (size, label) ->
+                                    val isSelected = currentFontSize.equals(size, ignoreCase = true) ||
+                                            (size == "normal" && currentFontSize.equals("default", ignoreCase = true))
                                     FilterChip(
-                                        selected = preferences.fontSize == size,
-                                        onClick = { viewModel.updatePreferences(mapOf("font_size" to size)) },
-                                        label = { Text(label, fontSize = 12.sp) },
+                                        selected = isSelected,
+                                        onClick = {
+                                            session.setFontSize(size)
+                                            viewModel.updatePreferences(mapOf("font_size" to size))
+                                        },
+                                        label = {
+                                            Text(
+                                                text = label,
+                                                fontSize = 12.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                            )
+                                        },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MintSage,
+                                            selectedLabelColor = Color.White,
+                                            containerColor = Color.Transparent,
+                                            labelColor = TextPrimary
+                                        ),
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = true,
+                                            selected = isSelected,
+                                            borderColor = BorderSubtle,
+                                            selectedBorderColor = MintSage
+                                        ),
                                         modifier = Modifier.weight(1f)
                                     )
                                 }

@@ -38,28 +38,147 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 // ============================================================================
-// Modern, Luxurious Pet Care Color Palette
+// Modern, Luxurious Pet Care Color Palette - Base Light & Dark Palettes
 // ============================================================================
-val EmeraldDark = Color(0xFF0B3327)
-val EmeraldPrimary = Color(0xFF135343)
-val MintSage = Color(0xFF289A8C)
-val MintLight = Color(0xFF38B2AC)
-val MintSoft = Color(0xFFE8F5F2)
-val SoftBackground = Color(0xFFF7FAF8)
-val WarmPearl = Color(0xFFFFFFFF)
-val BorderSubtle = Color(0xFFE3EBE6)
-val AmberAccent = Color(0xFFF59E0B)
-val AmberSoft = Color(0xFFFEF3C7)
-val AlertRose = Color(0xFFE63946)
-val AlertRoseSoft = Color(0xFFFFEBEE)
-val SkyBlue = Color(0xFF2563EB)
-val SkySoft = Color(0xFFEFF6FF)
-val LavenderAccent = Color(0xFF7C3AED)
-val LavenderSoft = Color(0xFFF5F3FF)
+val LocalPetDarkTheme = compositionLocalOf { false }
 
-val TextPrimary = Color(0xFF11201A)
-val TextSecondary = Color(0xFF4C5E57)
-val TextMuted = Color(0xFF8A9A92)
+// Base Light Palette
+val LightEmeraldDark = Color(0xFF0B3327)
+val LightEmeraldPrimary = Color(0xFF135343)
+val LightMintSage = Color(0xFF289A8C)
+val LightMintLight = Color(0xFF38B2AC)
+val LightMintSoft = Color(0xFFE8F5F2)
+val LightSoftBackground = Color(0xFFF7FAF8)
+val LightWarmPearl = Color(0xFFFFFFFF)
+val LightBorderSubtle = Color(0xFFE3EBE6)
+val LightAmberAccent = Color(0xFFF59E0B)
+val LightAmberSoft = Color(0xFFFEF3C7)
+val LightAlertRose = Color(0xFFE63946)
+val LightAlertRoseSoft = Color(0xFFFFEBEE)
+val LightSkyBlue = Color(0xFF2563EB)
+val LightSkySoft = Color(0xFFEFF6FF)
+val LightLavenderAccent = Color(0xFF7C3AED)
+val LightLavenderSoft = Color(0xFFF5F3FF)
+val LightTextPrimary = Color(0xFF11201A)
+val LightTextSecondary = Color(0xFF4C5E57)
+val LightTextMuted = Color(0xFF8A9A92)
+
+// Base Dark Palette (Accessible, High-Contrast Obsidian-Emerald)
+val DarkEmeraldDark = Color(0xFF6EE7B7)
+val DarkEmeraldPrimary = Color(0xFF34D399)
+val DarkMintSage = Color(0xFF2DD4BF)
+val DarkMintLight = Color(0xFF5EEAD4)
+val DarkMintSoft = Color(0xFF132F27)
+val DarkSoftBackground = Color(0xFF0E1613)
+val DarkWarmPearl = Color(0xFF182621)
+val DarkBorderSubtle = Color(0xFF253B33)
+val DarkAmberAccent = Color(0xFFFBBF24)
+val DarkAmberSoft = Color(0xFF3D2E0B)
+val DarkAlertRose = Color(0xFFFF6B6B)
+val DarkAlertRoseSoft = Color(0xFF3B1519)
+val DarkSkyBlue = Color(0xFF60A5FA)
+val DarkSkySoft = Color(0xFF172B4D)
+val DarkLavenderAccent = Color(0xFFA78BFA)
+val DarkLavenderSoft = Color(0xFF2E1B4E)
+val DarkTextPrimary = Color(0xFFF3F7F5)
+val DarkTextSecondary = Color(0xFFB0C4BC)
+val DarkTextMuted = Color(0xFF71877E)
+
+// Dynamic Semantic Color Accessors (automatically react to current theme mode)
+val EmeraldDark: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkEmeraldDark else LightEmeraldDark
+
+val EmeraldPrimary: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkEmeraldPrimary else LightEmeraldPrimary
+
+val MintSage: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkMintSage else LightMintSage
+
+val MintLight: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkMintLight else LightMintLight
+
+val MintSoft: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkMintSoft else LightMintSoft
+
+val SoftBackground: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkSoftBackground else LightSoftBackground
+
+val WarmPearl: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkWarmPearl else LightWarmPearl
+
+val BorderSubtle: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkBorderSubtle else LightBorderSubtle
+
+val AmberAccent: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkAmberAccent else LightAmberAccent
+
+val AmberSoft: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkAmberSoft else LightAmberSoft
+
+val AlertRose: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkAlertRose else LightAlertRose
+
+val AlertRoseSoft: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkAlertRoseSoft else LightAlertRoseSoft
+
+val SkyBlue: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkSkyBlue else LightSkyBlue
+
+val SkySoft: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkSkySoft else LightSkySoft
+
+val LavenderAccent: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkLavenderAccent else LightLavenderAccent
+
+val LavenderSoft: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkLavenderSoft else LightLavenderSoft
+
+val TextPrimary: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkTextPrimary else LightTextPrimary
+
+val TextSecondary: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkTextSecondary else LightTextSecondary
+
+val TextMuted: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = if (LocalPetDarkTheme.current) DarkTextMuted else LightTextMuted
 
 val PrimaryGradient = Brush.horizontalGradient(
     colors = listOf(Color(0xFF2FA294), Color(0xFF0F4738))
@@ -107,7 +226,7 @@ fun PetModernTopBar(
                         .clip(CircleShape)
                         .clickable { onBack() },
                     shape = CircleShape,
-                    color = Color.White,
+                    color = WarmPearl,
                     shadowElevation = 3.dp,
                     border = BorderStroke(1.dp, BorderSubtle)
                 ) {
@@ -529,8 +648,8 @@ fun PetTextField(
                 unfocusedBorderColor = BorderSubtle,
                 focusedLabelColor = EmeraldDark,
                 unfocusedLabelColor = TextSecondary,
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
+                focusedContainerColor = WarmPearl,
+                unfocusedContainerColor = WarmPearl,
                 errorBorderColor = AlertRose,
                 errorLabelColor = AlertRose
             ),

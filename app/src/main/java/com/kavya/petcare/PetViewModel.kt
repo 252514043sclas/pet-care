@@ -170,7 +170,12 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     val allPets: StateFlow<List<PetDto>> = _allPets.asStateFlow()
 
     // User Preferences (Notifications & Theme)
-    private val _preferences = MutableStateFlow(PreferencesDto())
+    private val _preferences = MutableStateFlow(
+        PreferencesDto(
+            themeMode = session.getThemeMode(),
+            fontSize = session.getFontSize()
+        )
+    )
     val preferences: StateFlow<PreferencesDto> = _preferences.asStateFlow()
 
     // Dynamic Grooming Calendar Reminders
@@ -658,26 +663,51 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.getPreferences().onSuccess { prefs ->
                 _preferences.value = prefs
+                session.setThemeMode(prefs.themeMode)
+                session.setFontSize(prefs.fontSize)
             }
         }
     }
 
     fun updatePreferences(map: Map<String, Any>, onDone: ((Boolean, String) -> Unit)? = null) {
+        val themeMode = map["theme_mode"] as? String
+        val fontSize = map["font_size"] as? String
+        // Immediately apply locally for zero-latency UI update
+        themeMode?.let {
+            session.setThemeMode(it)
+            _preferences.value = _preferences.value.copy(themeMode = it)
+        }
+        fontSize?.let {
+            session.setFontSize(it)
+            _preferences.value = _preferences.value.copy(fontSize = it)
+        }
+
         val req = UpdatePreferencesRequest(
             notifVaccination = map["notif_vaccination"] as? Boolean,
             notifMedication = map["notif_medication"] as? Boolean,
             notifAppointments = map["notif_appointments"] as? Boolean,
-            themeMode = map["theme_mode"] as? String,
-            fontSize = map["font_size"] as? String
+            themeMode = themeMode,
+            fontSize = fontSize
         )
         updatePreferences(req, onDone)
     }
 
     fun updatePreferences(request: UpdatePreferencesRequest, onDone: ((Boolean, String) -> Unit)? = null) {
+        request.themeMode?.let {
+            session.setThemeMode(it)
+            _preferences.value = _preferences.value.copy(themeMode = it)
+        }
+        request.fontSize?.let {
+            session.setFontSize(it)
+            _preferences.value = _preferences.value.copy(fontSize = it)
+        }
+
         viewModelScope.launch {
             val result = repository.updatePreferences(request)
             result.onSuccess { updated ->
                 _preferences.value = updated
+                session.setThemeMode(updated.themeMode)
+                session.setFontSize(updated.fontSize)
                 onDone?.invoke(true, "Preferences updated")
             }.onFailure { err ->
                 onDone?.invoke(false, err.message ?: "Failed to update preferences")
