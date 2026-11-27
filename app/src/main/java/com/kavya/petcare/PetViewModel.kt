@@ -21,18 +21,20 @@ import kotlinx.coroutines.launch
 // UI Models (Retained for 100% UI Compatibility)
 // ----------------------------------------------------
 data class PetProfile(
-    val id: String = "1",
-    val name: String = "Clover",
-    val type: String = "Rabbit",
-    val breed: String = "Holland Lop",
-    val age: String = "1.2 yrs",
-    val weight: String = "1.8 kg",
-    val healthScore: Int = 95,
+    val id: String = "",
+    val name: String = "",
+    val type: String = "",
+    val breed: String = "",
+    val age: String = "",
+    val weight: String = "",
+    val healthScore: Int = 0,
     val gender: String = "Female",
-    val microchipId: String = "#985142091",
-    val vaccinationStatus: String = "Up to Date",
+    val microchipId: String = "",
+    val vaccinationStatus: String = "",
     val imageUrl: String? = null
-)
+) {
+    val hasPet: Boolean get() = id.isNotBlank() && id != "-1" && id != "0" && name.isNotBlank()
+}
 
 data class CareReminder(
     val id: String,
@@ -73,17 +75,17 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
 
     // Active Pet Profile StateFlow initialized from persistent SessionManager
     private val _activePet = MutableStateFlow(
-        if (session.getSavedActivePetName() != null) {
+        if (session.getActivePetId() > 0 && !session.getSavedActivePetName().isNullOrBlank()) {
             PetProfile(
                 id = session.getActivePetId().toString(),
-                name = session.getSavedActivePetName() ?: "Clover",
-                type = session.getSavedActivePetType() ?: "Rabbit",
-                breed = session.getSavedActivePetBreed() ?: "Holland Lop",
-                age = session.getSavedActivePetAge() ?: "1.2 yrs",
-                weight = session.getSavedActivePetWeight() ?: "1.8 kg",
+                name = session.getSavedActivePetName() ?: "",
+                type = session.getSavedActivePetType() ?: "",
+                breed = session.getSavedActivePetBreed() ?: "",
+                age = session.getSavedActivePetAge() ?: "",
+                weight = session.getSavedActivePetWeight() ?: "",
                 healthScore = session.getSavedActivePetHealthScore(),
                 gender = session.getSavedActivePetGender() ?: "Female",
-                microchipId = session.getSavedActivePetMicrochip() ?: "#985142091",
+                microchipId = session.getSavedActivePetMicrochip() ?: "",
                 vaccinationStatus = session.getSavedActivePetVaccination(),
                 imageUrl = session.getSavedActivePetImageUrl()
             )
@@ -234,8 +236,28 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             _errorMessage.value = null
             val result = repository.login(email, pass)
             _isLoading.value = false
-            result.onSuccess {
+            result.onSuccess { authData ->
+                if (authData.activePet != null && authData.activePet.id > 0 && authData.activePet.name.isNotBlank()) {
+                    val p = authData.activePet
+                    _activePet.value = PetProfile(
+                        id = p.id.toString(),
+                        name = p.name,
+                        type = p.species,
+                        breed = p.breed,
+                        age = p.ageYears,
+                        weight = "${p.weightKg} kg",
+                        healthScore = p.healthScore,
+                        gender = p.gender ?: "Female",
+                        microchipId = p.microchipId ?: "",
+                        vaccinationStatus = p.vaccinationStatus,
+                        imageUrl = p.imageUrl
+                    )
+                } else {
+                    _activePet.value = PetProfile()
+                    session.clearActivePet()
+                }
                 refreshDashboard()
+                loadAllPets()
                 onSuccess()
             }.onFailure { err ->
                 _errorMessage.value = err.message
@@ -251,6 +273,9 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             val result = repository.register(name, email, pass)
             _isLoading.value = false
             result.onSuccess {
+                _activePet.value = PetProfile()
+                _allPets.value = emptyList()
+                session.clearActivePet()
                 onSuccess()
             }.onFailure { err ->
                 _errorMessage.value = err.message
@@ -285,7 +310,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshDashboard() {
         viewModelScope.launch {
             repository.getDashboard().onSuccess { dash ->
-                dash.activePet?.let { p ->
+                val p = dash.activePet
+                if (p != null && p.id > 0 && p.name.isNotBlank()) {
                     val profile = PetProfile(
                         id = p.id.toString(),
                         name = p.name,
@@ -295,7 +321,7 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                         weight = "${p.weightKg} kg",
                         healthScore = p.healthScore,
                         gender = p.gender ?: "Female",
-                        microchipId = p.microchipId ?: "#985142091",
+                        microchipId = p.microchipId ?: "",
                         vaccinationStatus = p.vaccinationStatus,
                         imageUrl = p.imageUrl
                     )
@@ -315,6 +341,9 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                     )
                     loadWeightHistory(p.id)
                     loadMealHistory(p.id)
+                } else {
+                    _activePet.value = PetProfile()
+                    session.clearActivePet()
                 }
                 _userAvatarUrl.value = session.getUserAvatarUrl()
 
@@ -327,6 +356,8 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                             isCompleted = item.isCompleted
                         )
                     }
+                } else {
+                    _reminders.value = emptyList()
                 }
             }
         }
@@ -383,7 +414,7 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
                     weight = "${pet.weightKg} kg",
                     healthScore = pet.healthScore,
                     gender = pet.gender ?: "Female",
-                    microchipId = pet.microchipId ?: "#985142091",
+                    microchipId = pet.microchipId ?: "",
                     vaccinationStatus = pet.vaccinationStatus,
                     imageUrl = pet.imageUrl
                 )
@@ -435,6 +466,10 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.getPets().onSuccess { list ->
                 _allPets.value = list
+                if (list.isEmpty()) {
+                    _activePet.value = PetProfile()
+                    session.clearActivePet()
+                }
             }
         }
     }
@@ -449,7 +484,7 @@ class PetViewModel(application: Application) : AndroidViewModel(application) {
             weight = "${p.weightKg} kg",
             healthScore = p.healthScore,
             gender = p.gender ?: "Female",
-            microchipId = p.microchipId ?: "#985142091",
+            microchipId = p.microchipId ?: "",
             vaccinationStatus = p.vaccinationStatus,
             imageUrl = p.imageUrl
         )

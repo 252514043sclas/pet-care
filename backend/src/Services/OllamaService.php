@@ -88,8 +88,9 @@ class OllamaService {
             'num_gpu' => $this->numGpu,
             'num_thread' => $this->numThreads,
             'num_ctx' => 2048,
-            'num_predict' => 450,
-            'temperature' => 0.2,
+            'num_predict' => 650,
+            'temperature' => 0.1,
+            'repeat_penalty' => 1.15,
             'top_p' => 0.9,
             'top_k' => 40,
         ], $extraOptions);
@@ -142,7 +143,7 @@ class OllamaService {
         // Remove raw thinking blocks if emitted inside content
         if (!empty($content)) {
             $content = preg_replace('/<think>.*?<\/think>/is', '', $content);
-            $content = preg_replace('/^(?:(?:The user|First,?\s*I need|Wait|From the dossier|Let me|Okay|As a|I need to|I will|I should)[^\n]*\n*)+/is', '', trim($content));
+            $content = preg_replace('/^(?:(?:The user|First,?\s*(?:I need|let\'s)|Now,?\s*let\'s|Wait|From the dossier|Let me|Okay|As a|I need to|I will|I should)[^\n]*\n*)+/is', '', trim($content));
             $content = trim($content);
         }
 

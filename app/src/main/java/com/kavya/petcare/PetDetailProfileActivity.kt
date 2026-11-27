@@ -442,18 +442,20 @@ fun PetDetailProfileScreen(
                 title = "Pet Profile",
                 onBack = onBack,
                 actions = {
-                    Surface(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .clickable { openEditDialog() },
-                        shape = CircleShape,
-                        color = Color.White,
-                        border = BorderStroke(1.dp, BorderSubtle),
-                        shadowElevation = 2.dp
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Profile", tint = MintSage, modifier = Modifier.size(18.dp))
+                    if (activePet.hasPet) {
+                        Surface(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .clickable { openEditDialog() },
+                            shape = CircleShape,
+                            color = Color.White,
+                            border = BorderStroke(1.dp, BorderSubtle),
+                            shadowElevation = 2.dp
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit Profile", tint = MintSage, modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                     Surface(
@@ -504,207 +506,284 @@ fun PetDetailProfileScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Pet Avatar with Camera Badge
-            Box(
-                contentAlignment = Alignment.BottomEnd,
-                modifier = Modifier.size(124.dp)
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .size(116.dp)
-                        .shadow(12.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.35f))
-                        .clip(CircleShape)
-                        .clickable { showPhotoChooserDialog = true },
-                    shape = CircleShape,
-                    color = Color.White,
-                    border = BorderStroke(3.5.dp, MintSage.copy(alpha = 0.35f))
-                ) {
-                    if (localPreviewBitmap != null) {
-                        Image(
-                            bitmap = localPreviewBitmap!!.asImageBitmap(),
-                            contentDescription = "Pet Avatar",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        PetAvatar(
-                            imageUrl = activePet.imageUrl,
-                            species = activePet.type,
-                            petName = activePet.name,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
+            if (!activePet.hasPet) {
+                // Empty State UI
+                Spacer(Modifier.height(36.dp))
 
-                // Camera Badge Button
                 Surface(
                     modifier = Modifier
-                        .size(36.dp)
-                        .shadow(4.dp, CircleShape)
-                        .clip(CircleShape)
-                        .clickable { showPhotoChooserDialog = true },
+                        .size(112.dp)
+                        .shadow(10.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.25f)),
                     shape = CircleShape,
-                    color = MintSage,
-                    border = BorderStroke(2.dp, Color.White)
+                    color = MintSoft,
+                    border = BorderStroke(3.dp, MintSage.copy(alpha = 0.35f))
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Change Photo",
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
+                            imageVector = Icons.Default.Pets,
+                            contentDescription = null,
+                            tint = MintSage,
+                            modifier = Modifier.size(54.dp)
                         )
                     }
                 }
-            }
 
-            Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(24.dp))
 
-            Text(
-                text = activePet.name,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = EmeraldDark
-            )
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(top = 4.dp)
-            ) {
-                PetBadge(text = activePet.type.uppercase(), color = MintSage)
-                Text("•", color = TextMuted)
                 Text(
-                    text = activePet.breed,
-                    fontSize = 14.sp,
+                    text = "No pets added yet!",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = EmeraldDark
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = "Add your first pet to get started with personalized pet care.",
                     color = TextSecondary,
-                    fontWeight = FontWeight.Medium
+                    fontSize = 14.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 32.dp)
                 )
-            }
 
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(36.dp))
 
-            // Quick Stats 4-Pill Grid
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                PetStatPill(
-                    label = "Weight",
-                    value = activePet.weight,
-                    icon = Icons.Default.MonitorWeight,
-                    tintColor = SkyBlue,
-                    modifier = Modifier.weight(1f)
-                )
-                PetStatPill(
-                    label = "Age",
-                    value = activePet.age,
-                    icon = Icons.Default.Cake,
-                    tintColor = AmberAccent,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    PetGradientButton(
+                        text = "Add Your First Pet",
+                        icon = Icons.Default.Add,
+                        onClick = {
+                            context.startActivity(Intent(context, SelectPetTypeActivity::class.java))
+                        }
+                    )
 
-            Spacer(Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                val healthDisplayValue = if (activePet.healthScore > 0) {
-                    "${activePet.healthScore}/100"
-                } else {
-                    "No data"
+                    PetOutlinedButton(
+                        text = "Log Out of Account",
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        borderColor = AlertRose.copy(alpha = 0.5f),
+                        contentColor = AlertRose,
+                        onClick = { showLogoutDialog = true }
+                    )
                 }
-
-                PetStatPill(
-                    label = "Health",
-                    value = healthDisplayValue,
-                    icon = Icons.Default.Favorite,
-                    tintColor = AlertRose,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        context.startActivity(Intent(context, HealthScoreDetailActivity::class.java))
-                    }
-                )
-
-                val vaccineDisplayValue = if (activePet.vaccinationStatus.isNotBlank()) {
-                    activePet.vaccinationStatus
-                } else {
-                    "No Records"
-                }
-
-                val vaccineTint = when (vaccineDisplayValue.uppercase()) {
-                    "OVERDUE" -> AlertRose
-                    "DUE SOON" -> AmberAccent
-                    else -> MintSage
-                }
-
-                PetStatPill(
-                    label = "Vaccine",
-                    value = vaccineDisplayValue,
-                    icon = Icons.Default.Shield,
-                    tintColor = vaccineTint,
-                    modifier = Modifier.weight(1f),
-                    onClick = {
-                        context.startActivity(Intent(context, VaccinationDetailActivity::class.java))
-                    }
-                )
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Profile Details Section Card
-            Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                PetSectionHeader(title = "Pet Profile Information")
-                Spacer(Modifier.height(12.dp))
-
-                PetModernCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
+            } else {
+                // Pet Avatar with Camera Badge
+                Box(
+                    contentAlignment = Alignment.BottomEnd,
+                    modifier = Modifier.size(124.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .size(116.dp)
+                            .shadow(12.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.35f))
+                            .clip(CircleShape)
+                            .clickable { showPhotoChooserDialog = true },
+                        shape = CircleShape,
+                        color = Color.White,
+                        border = BorderStroke(3.5.dp, MintSage.copy(alpha = 0.35f))
                     ) {
-                        ProfileInfoRow(icon = Icons.Default.Pets, label = "Species / Animal", value = activePet.type)
-                        HorizontalDivider(color = BorderSubtle)
-                        ProfileInfoRow(icon = Icons.Default.Category, label = "Breed", value = activePet.breed)
-                        HorizontalDivider(color = BorderSubtle)
-                        ProfileInfoRow(icon = Icons.Default.CalendarToday, label = "Age", value = activePet.age)
-                        HorizontalDivider(color = BorderSubtle)
-                        ProfileInfoRow(icon = Icons.Default.Scale, label = "Weight", value = activePet.weight)
-                        HorizontalDivider(color = BorderSubtle)
-                        ProfileInfoRow(icon = Icons.Default.Female, label = "Gender", value = activePet.gender)
-                        HorizontalDivider(color = BorderSubtle)
-                        ProfileInfoRow(icon = Icons.Default.QrCode, label = "Microchip ID", value = activePet.microchipId)
+                        if (localPreviewBitmap != null) {
+                            Image(
+                                bitmap = localPreviewBitmap!!.asImageBitmap(),
+                                contentDescription = "Pet Avatar",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            PetAvatar(
+                                imageUrl = activePet.imageUrl,
+                                species = activePet.type,
+                                petName = activePet.name,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    // Camera Badge Button
+                    Surface(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .shadow(4.dp, CircleShape)
+                            .clip(CircleShape)
+                            .clickable { showPhotoChooserDialog = true },
+                        shape = CircleShape,
+                        color = MintSage,
+                        border = BorderStroke(2.dp, Color.White)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Change Photo",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
-            }
 
-            Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(14.dp))
 
-            // Action Buttons
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                PetGradientButton(
-                    text = "Edit Pet Profile",
-                    icon = Icons.Default.Edit,
-                    onClick = { openEditDialog() }
+                Text(
+                    text = activePet.name,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = EmeraldDark
                 )
 
-                PetOutlinedButton(
-                    text = "Log Out of Account",
-                    icon = Icons.AutoMirrored.Filled.Logout,
-                    borderColor = AlertRose.copy(alpha = 0.5f),
-                    contentColor = AlertRose,
-                    onClick = { showLogoutDialog = true }
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.padding(top = 4.dp)
+                ) {
+                    PetBadge(text = activePet.type.uppercase(), color = MintSage)
+                    Text("•", color = TextMuted)
+                    Text(
+                        text = activePet.breed,
+                        fontSize = 14.sp,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Quick Stats 4-Pill Grid
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    PetStatPill(
+                        label = "Weight",
+                        value = activePet.weight,
+                        icon = Icons.Default.MonitorWeight,
+                        tintColor = SkyBlue,
+                        modifier = Modifier.weight(1f)
+                    )
+                    PetStatPill(
+                        label = "Age",
+                        value = activePet.age,
+                        icon = Icons.Default.Cake,
+                        tintColor = AmberAccent,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val healthDisplayValue = if (activePet.healthScore > 0) {
+                        "${activePet.healthScore}/100"
+                    } else {
+                        "No data"
+                    }
+
+                    PetStatPill(
+                        label = "Health",
+                        value = healthDisplayValue,
+                        icon = Icons.Default.Favorite,
+                        tintColor = AlertRose,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            context.startActivity(Intent(context, HealthScoreDetailActivity::class.java))
+                        }
+                    )
+
+                    val vaccineDisplayValue = if (activePet.vaccinationStatus.isNotBlank()) {
+                        activePet.vaccinationStatus
+                    } else {
+                        "No Records"
+                    }
+
+                    val vaccineTint = when (vaccineDisplayValue.uppercase()) {
+                        "OVERDUE" -> AlertRose
+                        "DUE SOON" -> AmberAccent
+                        else -> MintSage
+                    }
+
+                    PetStatPill(
+                        label = "Vaccine",
+                        value = vaccineDisplayValue,
+                        icon = Icons.Default.Shield,
+                        tintColor = vaccineTint,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            context.startActivity(Intent(context, VaccinationDetailActivity::class.java))
+                        }
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Profile Details Section Card
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    PetSectionHeader(title = "Pet Profile Information")
+                    Spacer(Modifier.height(12.dp))
+
+                    PetModernCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            ProfileInfoRow(icon = Icons.Default.Pets, label = "Species / Animal", value = activePet.type)
+                            HorizontalDivider(color = BorderSubtle)
+                            ProfileInfoRow(icon = Icons.Default.Category, label = "Breed", value = activePet.breed)
+                            HorizontalDivider(color = BorderSubtle)
+                            ProfileInfoRow(icon = Icons.Default.CalendarToday, label = "Age", value = activePet.age)
+                            HorizontalDivider(color = BorderSubtle)
+                            ProfileInfoRow(icon = Icons.Default.Scale, label = "Weight", value = activePet.weight)
+                            HorizontalDivider(color = BorderSubtle)
+                            ProfileInfoRow(icon = Icons.Default.Female, label = "Gender", value = activePet.gender)
+                            HorizontalDivider(color = BorderSubtle)
+                            ProfileInfoRow(icon = Icons.Default.QrCode, label = "Microchip ID", value = if (activePet.microchipId.isNotBlank()) activePet.microchipId else "None")
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Action Buttons
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    PetGradientButton(
+                        text = "Edit Pet Profile",
+                        icon = Icons.Default.Edit,
+                        onClick = { openEditDialog() }
+                    )
+
+                    PetOutlinedButton(
+                        text = "Add Another Pet",
+                        icon = Icons.Default.Add,
+                        borderColor = MintSage,
+                        contentColor = EmeraldDark,
+                        onClick = {
+                            context.startActivity(Intent(context, SelectPetTypeActivity::class.java))
+                        }
+                    )
+
+                    PetOutlinedButton(
+                        text = "Log Out of Account",
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        borderColor = AlertRose.copy(alpha = 0.5f),
+                        contentColor = AlertRose,
+                        onClick = { showLogoutDialog = true }
+                    )
+                }
             }
         }
     }

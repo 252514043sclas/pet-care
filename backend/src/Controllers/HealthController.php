@@ -49,7 +49,7 @@ class HealthController {
                 'description' => 'Mites can cause flaky skin, itching or patchy fur in rabbits. Other problems can look similar, so this is a possible explanation—not a diagnosis.',
                 'causes' => 'Contact with affected animals or contaminated bedding may spread mites. Only your vet can confirm the cause.',
                 'interim_steps' => [
-                    'Keep Clover’s bedding clean and dry. Avoid new scented products.',
+                    'Keep your pet’s bedding clean and dry. Avoid new scented products.',
                     'Record changes in skin, appetite and droppings for your vet.',
                     'Do not apply dog or cat flea products, creams or home remedies.',
                 ],

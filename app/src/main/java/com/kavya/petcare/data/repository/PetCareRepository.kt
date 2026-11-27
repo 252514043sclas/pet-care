@@ -55,7 +55,8 @@ class PetCareRepository(private val context: Context) {
                 if (!authData.user.avatarUrl.isNullOrBlank()) {
                     session.setUserAvatarUrl(authData.user.avatarUrl)
                 }
-                authData.activePet?.let { p ->
+                if (authData.activePet != null && authData.activePet.id > 0 && authData.activePet.name.isNotBlank()) {
+                    val p = authData.activePet
                     session.saveActivePetDetails(
                         id = p.id,
                         name = p.name,
@@ -64,11 +65,13 @@ class PetCareRepository(private val context: Context) {
                         age = p.ageYears,
                         weight = "${p.weightKg} kg",
                         imageUrl = p.imageUrl,
-                        gender = p.gender,
+                        gender = p.gender ?: "Female",
                         microchipId = p.microchipId,
                         healthScore = p.healthScore,
                         vaccinationStatus = p.vaccinationStatus
                     )
+                } else {
+                    session.clearActivePet()
                 }
                 Result.success(authData)
             } else {
@@ -91,6 +94,7 @@ class PetCareRepository(private val context: Context) {
                     userName = authData.user.name,
                     email = authData.user.email
                 )
+                session.clearActivePet()
                 Result.success(authData)
             } else {
                 val errorMsg = parseErrorMessage(response, response.body()?.message ?: "Registration failed.")

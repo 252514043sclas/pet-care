@@ -49,8 +49,10 @@ class SessionManager private constructor(context: Context) {
             putInt(KEY_USER_ID, userId)
             putString(KEY_USER_NAME, userName)
             putString(KEY_USER_EMAIL, email)
-            if (activePetId != null) {
+            if (activePetId != null && activePetId > 0) {
                 putInt(KEY_ACTIVE_PET_ID, activePetId)
+            } else {
+                remove(KEY_ACTIVE_PET_ID)
             }
             putBoolean(KEY_ONBOARDING_COMPLETED, true)
             apply()
@@ -83,8 +85,8 @@ class SessionManager private constructor(context: Context) {
         imageUrl: String?,
         gender: String = "Female",
         microchipId: String? = null,
-        healthScore: Int = 95,
-        vaccinationStatus: String = "Up to Date"
+        healthScore: Int = 0,
+        vaccinationStatus: String = ""
     ) {
         prefs.edit().apply {
             putInt(KEY_ACTIVE_PET_ID, id)
@@ -126,8 +128,8 @@ class SessionManager private constructor(context: Context) {
     }
     fun getSavedActivePetGender(): String? = prefs.getString(KEY_ACTIVE_PET_GENDER, null)
     fun getSavedActivePetMicrochip(): String? = prefs.getString(KEY_ACTIVE_PET_MICROCHIP, null)
-    fun getSavedActivePetHealthScore(): Int = prefs.getInt(KEY_ACTIVE_PET_HEALTH_SCORE, 95)
-    fun getSavedActivePetVaccination(): String = prefs.getString(KEY_ACTIVE_PET_VACCINATION, "Up to Date") ?: "Up to Date"
+    fun getSavedActivePetHealthScore(): Int = prefs.getInt(KEY_ACTIVE_PET_HEALTH_SCORE, 0)
+    fun getSavedActivePetVaccination(): String = prefs.getString(KEY_ACTIVE_PET_VACCINATION, "") ?: ""
 
     fun getToken(): String? = prefs.getString(KEY_AUTH_TOKEN, null)
 
@@ -145,13 +147,14 @@ class SessionManager private constructor(context: Context) {
 
     fun getActivePetDetails(): com.kavya.petcare.data.models.PetDto? {
         val id = getActivePetId()
-        val name = getSavedActivePetName() ?: return null
+        val name = getSavedActivePetName()
+        if (id <= 0 || name.isNullOrBlank()) return null
         return com.kavya.petcare.data.models.PetDto(
             id = id,
             name = name,
-            species = getSavedActivePetType() ?: "Dog",
-            breed = getSavedActivePetBreed() ?: "Mixed",
-            ageYears = getSavedActivePetAge() ?: "Adult",
+            species = getSavedActivePetType() ?: "",
+            breed = getSavedActivePetBreed() ?: "",
+            ageYears = getSavedActivePetAge() ?: "",
             weightKg = getSavedActivePetWeight()?.toDoubleOrNull() ?: 0.0,
             gender = getSavedActivePetGender() ?: "Female",
             imageUrl = getSavedActivePetImageUrl(),
@@ -161,7 +164,24 @@ class SessionManager private constructor(context: Context) {
         )
     }
 
-    fun getActivePetId(): Int = prefs.getInt(KEY_ACTIVE_PET_ID, 1)
+    fun getActivePetId(): Int = prefs.getInt(KEY_ACTIVE_PET_ID, -1)
+
+    fun clearActivePet() {
+        prefs.edit().apply {
+            remove(KEY_ACTIVE_PET_ID)
+            remove(KEY_ACTIVE_PET_NAME)
+            remove(KEY_ACTIVE_PET_TYPE)
+            remove(KEY_ACTIVE_PET_BREED)
+            remove(KEY_ACTIVE_PET_AGE)
+            remove(KEY_ACTIVE_PET_WEIGHT)
+            remove(KEY_ACTIVE_PET_IMAGE_URL)
+            remove(KEY_ACTIVE_PET_GENDER)
+            remove(KEY_ACTIVE_PET_MICROCHIP)
+            remove(KEY_ACTIVE_PET_HEALTH_SCORE)
+            remove(KEY_ACTIVE_PET_VACCINATION)
+            apply()
+        }
+    }
 
     fun saveBaseUrl(url: String) {
         prefs.edit().putString(KEY_BASE_URL, url).apply()

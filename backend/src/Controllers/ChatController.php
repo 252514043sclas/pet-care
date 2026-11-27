@@ -551,10 +551,10 @@ Patient: {$petName}, a {$age} {$gender} {$species} ({$breed}), weight {$weight}.
 
 INSTRUCTIONS:
 1. Speak directly to the pet owner using a compassionate, clear veterinary tone. Tailor all advice specifically to {$petName}'s species ({$species}), breed ({$breed}), age ({$age}), weight ({$weight}), and health records.
-2. For diet and nutrition, give clear safe foods, toxic foods to avoid, and safe portion guidance appropriate for {$species}.
+2. Structure your reply clearly with helpful markdown headings or bullet points (e.g. Assessment, Causes, Care Recommendations, Safe Foods / Foods to Avoid, Emergency Red Flags).
 3. Focus exclusively on veterinary triage, pet health, nutrition, and behavior for {$petName}. Always address the pet owner directly with compassionate, professional guidance.
 4. If symptoms appear critical or life-threatening (e.g. collapse, seizures, severe bleeding, difficulty breathing, toxic ingestion, or refusal to eat hay leading to GI stasis), urge immediate emergency veterinary hospital attention.
-5. NEVER narrate your internal thinking or refer to 'the user' in the third person. Start your reply directly with helpful veterinary advice or answers.";
+5. NEVER narrate your internal thinking, conversational planning, or refer to 'the user' in the third person. Start your reply directly with the structured advice.";
 
         if (!empty($searchContext)) {
             $prompt .= "\n" . $searchContext . "\n";

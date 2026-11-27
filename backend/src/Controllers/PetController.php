@@ -75,9 +75,9 @@ class PetController {
             ':age_years' => trim((string)$input['age_years']),
             ':weight_kg' => (float)$input['weight_kg'],
             ':gender' => $input['gender'] ?? 'Female',
-            ':microchip_id' => $input['microchip_id'] ?? ('#' . rand(100000000, 999999999)),
-            ':health_score' => isset($input['health_score']) ? (int)$input['health_score'] : 95,
-            ':vaccination_status' => $input['vaccination_status'] ?? 'Up to Date',
+            ':microchip_id' => !empty($input['microchip_id']) ? trim((string)$input['microchip_id']) : null,
+            ':health_score' => isset($input['health_score']) ? (int)$input['health_score'] : null,
+            ':vaccination_status' => !empty($input['vaccination_status']) ? trim((string)$input['vaccination_status']) : 'Not Recorded',
             ':image_url' => $imageUrl,
             ':is_active' => $isActive,
         ]);

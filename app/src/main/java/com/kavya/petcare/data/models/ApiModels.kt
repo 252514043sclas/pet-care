@@ -44,17 +44,17 @@ data class ForgotPasswordRequest(
 
 // Pet DTO
 data class PetDto(
-    @SerializedName("id") val id: Int = 1,
+    @SerializedName("id") val id: Int = 0,
     @SerializedName("user_id") val userId: Int? = null,
-    @SerializedName("name") val name: String = "Clover",
-    @SerializedName("species") val species: String = "Rabbit",
-    @SerializedName("breed") val breed: String = "Holland Lop",
-    @SerializedName("age_years") val ageYears: String = "1.2 yrs",
-    @SerializedName("weight_kg") val weightKg: Double = 1.80,
+    @SerializedName("name") val name: String = "",
+    @SerializedName("species") val species: String = "",
+    @SerializedName("breed") val breed: String = "",
+    @SerializedName("age_years") val ageYears: String = "",
+    @SerializedName("weight_kg") val weightKg: Double = 0.0,
     @SerializedName("gender") val gender: String = "Female",
-    @SerializedName("microchip_id") val microchipId: String? = "#985142091",
-    @SerializedName("health_score") val healthScore: Int = 95,
-    @SerializedName("vaccination_status") val vaccinationStatus: String = "Up to Date",
+    @SerializedName("microchip_id") val microchipId: String? = null,
+    @SerializedName("health_score") val healthScore: Int = 0,
+    @SerializedName("vaccination_status") val vaccinationStatus: String = "",
     @SerializedName("image_url") val imageUrl: String? = null,
     @SerializedName("is_active") val isActive: Int = 1
 )

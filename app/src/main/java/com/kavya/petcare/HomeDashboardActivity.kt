@@ -480,58 +480,164 @@ fun HomeTabScreen(
         Spacer(Modifier.height(20.dp))
 
         // Hero Active Pet Gradient Card
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .shadow(
-                    elevation = 8.dp,
-                    shape = RoundedCornerShape(26.dp),
-                    ambientColor = MintSage.copy(alpha = 0.3f),
-                    spotColor = EmeraldDark.copy(alpha = 0.45f)
-                )
-                .clip(RoundedCornerShape(26.dp))
-                .clickable { onNavigateProfile() },
-            shape = RoundedCornerShape(26.dp),
-            color = Color.Transparent
-        ) {
-            Box(
+        if (activePet.hasPet) {
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(HeroCardGradient)
-                    .padding(22.dp)
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(26.dp),
+                        ambientColor = MintSage.copy(alpha = 0.3f),
+                        spotColor = EmeraldDark.copy(alpha = 0.45f)
+                    )
+                    .clip(RoundedCornerShape(26.dp))
+                    .clickable { onNavigateProfile() },
+                shape = RoundedCornerShape(26.dp),
+                color = Color.Transparent
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(HeroCardGradient)
+                        .padding(22.dp)
                 ) {
-                    // Pet Avatar with double glow ring
-                    Surface(
-                        modifier = Modifier.size(70.dp),
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.25f),
-                        border = BorderStroke(2.5.dp, Color.White.copy(alpha = 0.8f))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        PetAvatar(
-                            imageUrl = activePet.imageUrl,
-                            species = activePet.type,
-                            petName = activePet.name,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    Spacer(Modifier.width(16.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        // Pet Avatar with double glow ring
+                        Surface(
+                            modifier = Modifier.size(70.dp),
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.25f),
+                            border = BorderStroke(2.5.dp, Color.White.copy(alpha = 0.8f))
                         ) {
+                            PetAvatar(
+                                imageUrl = activePet.imageUrl,
+                                species = activePet.type,
+                                petName = activePet.name,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Spacer(Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Surface(
+                                    color = Color(0xFFFEF3C7),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(
+                                        text = "ACTIVE PET",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF92400E),
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+                                if (allPets.size > 1) {
+                                    Surface(
+                                        color = Color.White.copy(alpha = 0.25f),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.clickable { showSwitchPetDialog = true }
+                                    ) {
+                                        Text(
+                                            text = "Switch ▾",
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                            fontSize = 10.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = activePet.name,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "${activePet.breed} ${activePet.type} • ${activePet.age}",
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.22f),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "View Profile",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .shadow(
+                        elevation = 8.dp,
+                        shape = RoundedCornerShape(26.dp),
+                        ambientColor = MintSage.copy(alpha = 0.3f),
+                        spotColor = EmeraldDark.copy(alpha = 0.45f)
+                    )
+                    .clip(RoundedCornerShape(26.dp))
+                    .clickable { onAddPet() },
+                shape = RoundedCornerShape(26.dp),
+                color = Color.Transparent
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(HeroCardGradient)
+                        .padding(22.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(64.dp),
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.25f),
+                            border = BorderStroke(2.5.dp, Color.White.copy(alpha = 0.8f))
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Pets,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
                             Surface(
                                 color = Color(0xFFFEF3C7),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
                                 Text(
-                                    text = "ACTIVE PET",
+                                    text = "GET STARTED",
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                     fontSize = 10.sp,
                                     color = Color(0xFF92400E),
@@ -539,49 +645,34 @@ fun HomeTabScreen(
                                     letterSpacing = 0.5.sp
                                 )
                             }
-                            if (allPets.size > 1) {
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.25f),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.clickable { showSwitchPetDialog = true }
-                                ) {
-                                    Text(
-                                        text = "Switch ▾",
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        fontSize = 10.sp,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = activePet.name,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "${activePet.breed} ${activePet.type} • ${activePet.age}",
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.22f),
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = "View Profile",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "No Pet Added Yet",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
                             )
+                            Text(
+                                text = "Tap here to add your first pet profile",
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.85f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.25f),
+                            modifier = Modifier.size(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Add Pet",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -1048,105 +1139,176 @@ fun ProfileTabScreen(
     val context = LocalContext.current
     val activePet by viewModel.activePet.collectAsState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Surface(
+    if (!activePet.hasPet) {
+        Column(
             modifier = Modifier
-                .size(106.dp)
-                .shadow(10.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.3f))
-                .clip(CircleShape)
-                .clickable { onNavigateProfile() },
-            shape = CircleShape,
-            color = Color.White,
-            border = BorderStroke(3.dp, MintSage.copy(alpha = 0.3f))
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            PetAvatar(
-                imageUrl = activePet.imageUrl,
-                species = activePet.type,
-                petName = activePet.name,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+            Spacer(Modifier.height(24.dp))
 
-        Spacer(Modifier.height(14.dp))
-
-        Text(
-            text = activePet.name,
-            fontSize = 26.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = EmeraldDark
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(top = 4.dp)
-        ) {
-            PetBadge(text = activePet.type.uppercase(), color = MintSage)
-            Text("•", color = TextMuted)
-            Text(activePet.breed, fontSize = 14.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // 3-Stat Pill Card
-        PetModernCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onNavigateProfile() }
-        ) {
-            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Weight", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Text(activePet.weight, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
-                }
-                HorizontalDivider(color = BorderSubtle)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { context.startActivity(Intent(context, HealthScoreDetailActivity::class.java)) },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Health Score", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    val scoreText = if (activePet.healthScore > 0) "${activePet.healthScore} / 100" else "No data"
-                    Text(scoreText, fontWeight = FontWeight.Bold, color = MintSage, fontSize = 15.sp)
-                }
-                HorizontalDivider(color = BorderSubtle)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { context.startActivity(Intent(context, VaccinationDetailActivity::class.java)) },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Vaccination Status", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Text(activePet.vaccinationStatus, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
+            Surface(
+                modifier = Modifier
+                    .size(112.dp)
+                    .shadow(10.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.25f)),
+                shape = CircleShape,
+                color = MintSoft,
+                border = BorderStroke(3.dp, MintSage.copy(alpha = 0.35f))
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Default.Pets,
+                        contentDescription = null,
+                        tint = MintSage,
+                        modifier = Modifier.size(54.dp)
+                    )
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text = "No pets added yet!",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = EmeraldDark
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Add your first pet to get started with personalized pet care.",
+                color = TextSecondary,
+                fontSize = 14.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+
+            Spacer(Modifier.height(36.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                PetGradientButton(
+                    text = "Add Your First Pet",
+                    icon = Icons.Default.Add,
+                    onClick = onAddPet
+                )
+
+                PetOutlinedButton(
+                    text = "App Settings & Account",
+                    icon = Icons.Default.Settings,
+                    onClick = onNavigateSettings
+                )
+            }
         }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier
+                    .size(106.dp)
+                    .shadow(10.dp, CircleShape, ambientColor = MintSage.copy(alpha = 0.3f))
+                    .clip(CircleShape)
+                    .clickable { onNavigateProfile() },
+                shape = CircleShape,
+                color = Color.White,
+                border = BorderStroke(3.dp, MintSage.copy(alpha = 0.3f))
+            ) {
+                PetAvatar(
+                    imageUrl = activePet.imageUrl,
+                    species = activePet.type,
+                    petName = activePet.name,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
-        Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(14.dp))
 
-        PetGradientButton(
-            text = "Add Another Pet",
-            icon = Icons.Default.Add,
-            onClick = onAddPet
-        )
+            Text(
+                text = activePet.name,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = EmeraldDark
+            )
 
-        Spacer(Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                PetBadge(text = activePet.type.uppercase(), color = MintSage)
+                Text("•", color = TextMuted)
+                Text(activePet.breed, fontSize = 14.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+            }
 
-        PetOutlinedButton(
-            text = "App Settings & Account",
-            icon = Icons.Default.Settings,
-            onClick = onNavigateSettings
-        )
+            Spacer(Modifier.height(24.dp))
 
-        Spacer(Modifier.height(16.dp))
+            // 3-Stat Pill Card
+            PetModernCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onNavigateProfile() }
+            ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Weight", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text(activePet.weight, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
+                    }
+                    HorizontalDivider(color = BorderSubtle)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { context.startActivity(Intent(context, HealthScoreDetailActivity::class.java)) },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Health Score", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        val scoreText = if (activePet.healthScore > 0) "${activePet.healthScore} / 100" else "No data"
+                        Text(scoreText, fontWeight = FontWeight.Bold, color = MintSage, fontSize = 15.sp)
+                    }
+                    HorizontalDivider(color = BorderSubtle)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { context.startActivity(Intent(context, VaccinationDetailActivity::class.java)) },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Vaccination Status", color = TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        val vaccineText = if (activePet.vaccinationStatus.isNotBlank()) activePet.vaccinationStatus else "No Records"
+                        Text(vaccineText, fontWeight = FontWeight.Bold, color = EmeraldDark, fontSize = 15.sp)
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            PetGradientButton(
+                text = "Add Another Pet",
+                icon = Icons.Default.Add,
+                onClick = onAddPet
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            PetOutlinedButton(
+                text = "App Settings & Account",
+                icon = Icons.Default.Settings,
+                onClick = onNavigateSettings
+            )
+
+            Spacer(Modifier.height(16.dp))
+        }
     }
 }

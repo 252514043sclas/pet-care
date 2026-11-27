@@ -69,54 +69,23 @@ class AddPetProfileActivity : ComponentActivity() {
 
 @Composable
 fun AddPetProfileScreen(
-    initialType: String = "Rabbit",
+    initialType: String = "Dog",
     viewModel: PetViewModel = PetViewModel.getShared(LocalContext.current),
     onBack: () -> Unit = {},
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
 
-    val defaultName = when (initialType.lowercase().trim()) {
-        "dog" -> "Buddy"
-        "cat" -> "Luna"
-        "rabbit" -> "Clover"
-        "bird" -> "Sunny"
-        "hamster" -> "Peanut"
-        "fish" -> "Bubbles"
-        else -> "Milo"
-    }
-    val defaultBreed = when (initialType.lowercase().trim()) {
-        "dog" -> "Golden Retriever"
-        "cat" -> "Domestic Shorthair"
-        "rabbit" -> "Holland Lop"
-        "bird" -> "Parakeet"
-        "hamster" -> "Syrian Hamster"
-        "fish" -> "Betta"
-        else -> "Companion"
-    }
-    val defaultAge = when (initialType.lowercase().trim()) {
-        "dog" -> "2.0"
-        "cat" -> "1.5"
-        "rabbit" -> "1.2"
-        "bird" -> "1.0"
-        "hamster" -> "0.8"
-        "fish" -> "0.5"
-        else -> "1.0"
-    }
-    val defaultWeight = when (initialType.lowercase().trim()) {
-        "dog" -> "15.0"
-        "cat" -> "4.2"
-        "rabbit" -> "1.8"
-        "bird" -> "0.3"
-        "hamster" -> "0.15"
-        "fish" -> "0.05"
-        else -> "2.5"
+    val speciesList = listOf("Dog", "Cat", "Rabbit", "Bird", "Hamster", "Other")
+    var selectedType by remember {
+        mutableStateOf(if (speciesList.contains(initialType)) initialType else "Dog")
     }
 
-    var petName by remember { mutableStateOf(defaultName) }
-    var breed by remember { mutableStateOf(defaultBreed) }
-    var age by remember { mutableStateOf(defaultAge) }
-    var weight by remember { mutableStateOf(defaultWeight) }
+    var petName by remember { mutableStateOf("") }
+    var breed by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf("") }
+    var weight by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var selectedBase64 by remember { mutableStateOf<String?>(null) }
     var showPhotoChooserDialog by remember { mutableStateOf(false) }
@@ -281,7 +250,7 @@ fun AddPetProfileScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Tell us about your $initialType",
+                text = "Tell us about your $selectedType",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = EmeraldDark
@@ -295,7 +264,104 @@ fun AddPetProfileScreen(
                 fontSize = 14.sp
             )
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(20.dp))
+
+            // Species Selector Chips
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                Text(
+                    text = "Select Species",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = EmeraldDark
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    speciesList.take(3).forEach { sp ->
+                        val isSelected = selectedType.equals(sp, ignoreCase = true)
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { selectedType = sp },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) MintSage else Color.White,
+                            border = BorderStroke(1.5.dp, if (isSelected) MintSage else BorderSubtle)
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = sp,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color.White else EmeraldDark
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    speciesList.drop(3).forEach { sp ->
+                        val isSelected = selectedType.equals(sp, ignoreCase = true)
+                        Surface(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable { selectedType = sp },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) MintSage else Color.White,
+                            border = BorderStroke(1.5.dp, if (isSelected) MintSage else BorderSubtle)
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = sp,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) Color.White else EmeraldDark
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Error Banner
+            if (errorMessage != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = AlertRose.copy(alpha = 0.1f),
+                    border = BorderStroke(1.dp, AlertRose.copy(alpha = 0.4f))
+                ) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = AlertRose,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+            }
 
             // Form Card
             Column(modifier = Modifier.padding(horizontal = 20.dp)) {
@@ -306,25 +372,26 @@ fun AddPetProfileScreen(
                     ) {
                         PetTextField(
                             value = petName,
-                            onValueChange = { petName = it },
-                            label = "Pet Name",
-                            placeholder = "e.g. Luna",
+                            onValueChange = { petName = it; errorMessage = null },
+                            label = "Pet Name *",
+                            placeholder = "Enter your pet's name (e.g. Milo)",
                             leadingIcon = Icons.Default.Pets
                         )
 
                         PetTextField(
                             value = breed,
-                            onValueChange = { breed = it },
-                            label = "Breed",
-                            placeholder = "e.g. Holland Lop",
+                            onValueChange = { breed = it; errorMessage = null },
+                            label = "Breed *",
+                            placeholder = "Enter breed (e.g. Beagle, Persian)",
                             leadingIcon = Icons.Default.Category
                         )
 
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             OutlinedTextField(
                                 value = age,
-                                onValueChange = { age = it },
-                                label = { Text("Age (yrs)") },
+                                onValueChange = { age = it; errorMessage = null },
+                                label = { Text("Age (yrs) *") },
+                                placeholder = { Text("e.g. 2.0") },
                                 singleLine = true,
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier.weight(1f),
@@ -337,8 +404,9 @@ fun AddPetProfileScreen(
 
                             OutlinedTextField(
                                 value = weight,
-                                onValueChange = { weight = it },
-                                label = { Text("Weight (kg)") },
+                                onValueChange = { weight = it; errorMessage = null },
+                                label = { Text("Weight (kg) *") },
+                                placeholder = { Text("e.g. 5.5") },
                                 singleLine = true,
                                 shape = RoundedCornerShape(16.dp),
                                 modifier = Modifier.weight(1f),
@@ -358,12 +426,39 @@ fun AddPetProfileScreen(
                     text = "Save & Complete Setup",
                     isLoading = isLoading,
                     onClick = {
+                        val trimmedName = petName.trim()
+                        val trimmedBreed = breed.trim()
+                        val trimmedAge = age.trim()
+                        val trimmedWeight = weight.trim()
+
+                        if (trimmedName.isBlank()) {
+                            errorMessage = "Please enter your pet's name."
+                            return@PetGradientButton
+                        }
+                        if (trimmedBreed.isBlank()) {
+                            errorMessage = "Please enter your pet's breed."
+                            return@PetGradientButton
+                        }
+                        if (trimmedAge.isBlank()) {
+                            errorMessage = "Please enter your pet's age."
+                            return@PetGradientButton
+                        }
+                        if (trimmedWeight.isBlank()) {
+                            errorMessage = "Please enter your pet's weight."
+                            return@PetGradientButton
+                        }
+                        if (trimmedWeight.toDoubleOrNull() == null) {
+                            errorMessage = "Please enter a valid numeric weight (e.g. 4.5)."
+                            return@PetGradientButton
+                        }
+
+                        errorMessage = null
                         viewModel.createPetProfile(
-                            name = petName.trim().ifBlank { defaultName },
-                            breed = breed.trim().ifBlank { defaultBreed },
-                            age = age.trim().ifBlank { defaultAge },
-                            weight = weight.trim().ifBlank { defaultWeight },
-                            type = initialType,
+                            name = trimmedName,
+                            breed = trimmedBreed,
+                            age = trimmedAge,
+                            weight = trimmedWeight,
+                            type = selectedType,
                             imageBase64 = selectedBase64,
                             bitmap = selectedBitmap,
                             onComplete = onSave
