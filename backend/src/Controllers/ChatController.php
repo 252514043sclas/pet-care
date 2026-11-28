@@ -12,7 +12,7 @@ use App\Utils\Validator;
 use PDO;
 
 class ChatController {
-    public const NON_PET_RESPONSE = "I'm a pet care assistant, so I can only help with pet-related questions.";
+    public const NON_PET_RESPONSE = "I'm your Pet Care AI assistant. I can help you with questions related to pets and their care.";
     public const NON_PET_IMAGE_RESPONSE = "I'm a pet care assistant, so I can only analyze pet-related images.";
 
     private OllamaService $ollama;
@@ -21,6 +21,138 @@ class ChatController {
     public function __construct() {
         $this->ollama = new OllamaService();
         $this->searchService = new SearchService();
+    }
+
+    /**
+     * GET /api/chat/conversations
+     * List all chat conversations for the current user
+     */
+    public function conversations(array $currentUser): void {
+        $pdo = Database::getConnection();
+        $userId = (int)$currentUser['id'];
+
+        $stmt = $pdo->prepare('
+            SELECT c.id, c.user_id, c.pet_id, c.title, c.language, c.created_at, c.updated_at,
+                   COUNT(m.id) as message_count,
+                   (SELECT message FROM chat_messages WHERE conversation_id = c.id ORDER BY id DESC LIMIT 1) as last_message,
+                   (SELECT created_at FROM chat_messages WHERE conversation_id = c.id ORDER BY id DESC LIMIT 1) as last_message_at
+            FROM chat_conversations c
+            LEFT JOIN chat_messages m ON m.conversation_id = c.id
+            WHERE c.user_id = :uid
+            GROUP BY c.id
+            ORDER BY c.updated_at DESC, c.id DESC
+        ');
+        $stmt->execute([':uid' => $userId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        Response::success($rows, 'Conversations retrieved');
+    }
+
+    /**
+     * POST /api/chat/conversations
+     * Create a new chat conversation session
+     */
+    public function createConversation(array $currentUser, array $input): void {
+        $pdo = Database::getConnection();
+        $userId = (int)$currentUser['id'];
+        $title = trim((string)($input['title'] ?? '')) ?: 'New Chat';
+        $petId = !empty($input['pet_id']) ? (int)$input['pet_id'] : null;
+        $language = trim((string)($input['language'] ?? 'en'));
+
+        $stmt = $pdo->prepare('
+            INSERT INTO chat_conversations (user_id, pet_id, title, language, created_at, updated_at)
+            VALUES (:uid, :pid, :title, :lang, NOW(), NOW())
+        ');
+        $stmt->execute([
+            ':uid' => $userId,
+            ':pid' => $petId,
+            ':title' => $title,
+            ':lang' => $language
+        ]);
+
+        $id = (int)$pdo->lastInsertId();
+
+        Response::success([
+            'id' => $id,
+            'user_id' => $userId,
+            'pet_id' => $petId,
+            'title' => $title,
+            'language' => $language,
+            'message_count' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ], 'Conversation created', 201);
+    }
+
+    /**
+     * GET /api/chat/conversations/{id}
+     * Get specific conversation details and all its messages
+     */
+    public function getConversation(array $currentUser, int $id): void {
+        $pdo = Database::getConnection();
+        $userId = (int)$currentUser['id'];
+
+        $convStmt = $pdo->prepare('SELECT * FROM chat_conversations WHERE id = :id AND user_id = :uid');
+        $convStmt->execute([':id' => $id, ':uid' => $userId]);
+        $conv = $convStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$conv) {
+            Response::notFound('Conversation not found');
+            return;
+        }
+
+        $msgStmt = $pdo->prepare('
+            SELECT id, conversation_id, user_id, pet_id, sender, message, image_url, message_type, sources, analysis_metadata, created_at
+            FROM chat_messages
+            WHERE conversation_id = :cid AND user_id = :uid
+            ORDER BY id ASC
+        ');
+        $msgStmt->execute([':cid' => $id, ':uid' => $userId]);
+        $messages = $msgStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($messages as &$m) {
+            $m['sources'] = !empty($m['sources']) ? json_decode($m['sources'], true) : [];
+            $m['analysis_metadata'] = !empty($m['analysis_metadata']) ? json_decode($m['analysis_metadata'], true) : null;
+        }
+
+        $conv['messages'] = $messages;
+        Response::success($conv, 'Conversation retrieved');
+    }
+
+    /**
+     * DELETE /api/chat/conversations/{id}
+     * Delete a conversation and all its messages
+     */
+    public function deleteConversation(array $currentUser, int $id): void {
+        $pdo = Database::getConnection();
+        $userId = (int)$currentUser['id'];
+
+        $checkStmt = $pdo->prepare('SELECT id FROM chat_conversations WHERE id = :id AND user_id = :uid');
+        $checkStmt->execute([':id' => $id, ':uid' => $userId]);
+        if (!$checkStmt->fetch()) {
+            Response::notFound('Conversation not found');
+            return;
+        }
+
+        // Clean up any images associated with this conversation
+        $imgStmt = $pdo->prepare('SELECT image_url FROM chat_messages WHERE conversation_id = :cid AND user_id = :uid AND image_url IS NOT NULL');
+        $imgStmt->execute([':cid' => $id, ':uid' => $userId]);
+        $images = $imgStmt->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($images as $imgRel) {
+            $fullPath = __DIR__ . '/../../public' . $imgRel;
+            if (file_exists($fullPath)) {
+                @unlink($fullPath);
+            }
+        }
+
+        // Delete conversation (foreign key cascade deletes chat_messages)
+        $delStmt = $pdo->prepare('DELETE FROM chat_conversations WHERE id = :id AND user_id = :uid');
+        $delStmt->execute([':id' => $id, ':uid' => $userId]);
+
+        Response::success([
+            'id' => $id,
+            'deleted' => true
+        ], 'Conversation deleted successfully');
     }
 
     /**
@@ -63,20 +195,56 @@ class ChatController {
         $userMessage = trim((string)$input['message']);
         $petId = !empty($input['pet_id']) ? (int)$input['pet_id'] : null;
         $enableSearch = isset($input['enable_search']) ? (bool)$input['enable_search'] : true;
+        $conversationId = !empty($input['conversation_id']) ? (int)$input['conversation_id'] : null;
 
         $pdo = Database::getConnection();
 
-        // 1. Fetch active pet context if available
+        // Detect language
+        $detectedLang = $this->detectLanguage($userMessage);
+
+        // Resolve active pet context if available
         $petContext = $this->resolvePetContext($pdo, (int)$currentUser['id'], $petId);
         $actualPetId = $petContext['id'] ?? $petId;
 
-        // Fetch recent conversation history from DB (up to last 10 messages for continuous conversational context)
-        $history = $this->getRecentConversationHistory($pdo, (int)$currentUser['id'], $actualPetId, 10);
+        // Resolve or create conversation session
+        $convTitle = 'Pet Consultation';
+        if ($conversationId !== null) {
+            $checkStmt = $pdo->prepare('SELECT id, title, language FROM chat_conversations WHERE id = :cid AND user_id = :uid');
+            $checkStmt->execute([':cid' => $conversationId, ':uid' => (int)$currentUser['id']]);
+            $conv = $checkStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$conv) {
+                $conversationId = null;
+            } else {
+                $convTitle = $conv['title'];
+            }
+        }
+
+        if ($conversationId === null) {
+            $convTitle = $this->generateConversationTitle($userMessage);
+            $createConvStmt = $pdo->prepare('
+                INSERT INTO chat_conversations (user_id, pet_id, title, language, created_at, updated_at)
+                VALUES (:uid, :pid, :title, :lang, NOW(), NOW())
+            ');
+            $createConvStmt->execute([
+                ':uid' => (int)$currentUser['id'],
+                ':pid' => $actualPetId,
+                ':title' => $convTitle,
+                ':lang' => $detectedLang
+            ]);
+            $conversationId = (int)$pdo->lastInsertId();
+        } else {
+            $updConv = $pdo->prepare('UPDATE chat_conversations SET updated_at = NOW() WHERE id = :cid');
+            $updConv->execute([':cid' => $conversationId]);
+        }
+
+        // Fetch recent conversation history for this conversation
+        $history = $this->getRecentConversationHistory($pdo, (int)$currentUser['id'], $actualPetId, 10, $conversationId);
 
         // Strict Domain Check: Restrict AI responses to pet-related topics only
         if ($this->isUnrelatedToPets($userMessage, $petContext, $history)) {
             $refusal = self::NON_PET_RESPONSE;
             $userMsgId = $this->saveMessageToDb($pdo, [
+                'conversation_id' => $conversationId,
                 'user_id' => (int)$currentUser['id'],
                 'pet_id' => $actualPetId,
                 'sender' => 'user',
@@ -84,6 +252,7 @@ class ChatController {
                 'message_type' => 'text'
             ]);
             $aiMsgId = $this->saveMessageToDb($pdo, [
+                'conversation_id' => $conversationId,
                 'user_id' => (int)$currentUser['id'],
                 'pet_id' => $actualPetId,
                 'sender' => 'assistant',
@@ -95,6 +264,8 @@ class ChatController {
                 'message' => $refusal,
                 'message_id' => $aiMsgId,
                 'user_message_id' => $userMsgId,
+                'conversation_id' => $conversationId,
+                'conversation_title' => $convTitle,
                 'sender' => 'assistant',
                 'sources' => [],
                 'pet' => $petContext,
@@ -120,7 +291,7 @@ class ChatController {
         }
 
         // 3. Build system prompt & message history
-        $systemPrompt = $this->buildSystemPrompt($petContext, $searchContext);
+        $systemPrompt = $this->buildSystemPrompt($petContext, $searchContext, $detectedLang);
 
         $messages = [
             ['role' => 'system', 'content' => $systemPrompt]
@@ -138,6 +309,7 @@ class ChatController {
 
         // 4. Save User Message to Database
         $userMsgId = $this->saveMessageToDb($pdo, [
+            'conversation_id' => $conversationId,
             'user_id' => (int)$currentUser['id'],
             'pet_id' => $actualPetId,
             'sender' => 'user',
@@ -153,6 +325,7 @@ class ChatController {
             
             // Still save error notification to conversation
             $this->saveMessageToDb($pdo, [
+                'conversation_id' => $conversationId,
                 'user_id' => (int)$currentUser['id'],
                 'pet_id' => $actualPetId,
                 'sender' => 'assistant',
@@ -178,6 +351,7 @@ class ChatController {
 
         // 6. Save AI Response to Database
         $aiMsgId = $this->saveMessageToDb($pdo, [
+            'conversation_id' => $conversationId,
             'user_id' => (int)$currentUser['id'],
             'pet_id' => $actualPetId,
             'sender' => 'assistant',
@@ -190,6 +364,8 @@ class ChatController {
             'message' => $aiContent,
             'message_id' => $aiMsgId,
             'user_message_id' => $userMsgId,
+            'conversation_id' => $conversationId,
+            'conversation_title' => $convTitle,
             'sender' => 'assistant',
             'sources' => $searchResults,
             'pet' => $petContext,
@@ -518,13 +694,13 @@ class ChatController {
         ];
     }
 
-    private function buildSystemPrompt(array $pet, string $searchContext): string {
-        $petName = $pet['name'] ?? 'the pet';
-        $species = $pet['species'] ?? 'Domestic Animal';
-        $breed = $pet['breed'] ?? 'Mixed';
-        $age = $pet['age_years'] ?? 'Unknown';
-        $weight = ($pet['weight_kg'] > 0) ? "{$pet['weight_kg']} kg" : 'Not specified';
-        $gender = $pet['gender'] ?? 'Unknown';
+    private function buildSystemPrompt(array $pet, string $searchContext, string $lang = 'en'): string {
+        $petName = !empty($pet['name']) ? $pet['name'] : 'the pet';
+        $species = !empty($pet['species']) ? $pet['species'] : 'Domestic Animal';
+        $breed = !empty($pet['breed']) ? $pet['breed'] : 'Mixed Breed';
+        $age = !empty($pet['age_years']) ? $pet['age_years'] : 'Unspecified age';
+        $weight = (!empty($pet['weight_kg']) && (float)$pet['weight_kg'] > 0) ? "{$pet['weight_kg']} kg" : 'Unspecified weight';
+        $gender = !empty($pet['gender']) ? $pet['gender'] : 'Unspecified';
         $healthScore = $pet['health_score'] ?? 'N/A';
         $vaxStatus = $pet['vaccination_status'] ?? 'Unknown';
 
@@ -546,21 +722,80 @@ class ChatController {
             $vaxSummary = implode('; ', $vaxes);
         }
 
-        $prompt = "You are 'PetCare AI', a specialized veterinary and pet-care assistant.
-Patient: {$petName}, a {$age} {$gender} {$species} ({$breed}), weight {$weight}. Overall Health Score: {$healthScore}/100. Vaccination Status: {$vaxStatus}. Medical History: {$healthSummary}. Active Vaccinations: {$vaxSummary}.
+        $prompt = "You are 'PetCare AI', a specialized pet care and veterinary assistant.
+CURRENT SELECTED PET CONTEXT:
+- Pet Name: {$petName}
+- Species: {$species}
+- Breed: {$breed}
+- Age: {$age}
+- Weight: {$weight}
+- Overall Health Score: {$healthScore}/100
+- Vaccination Status: {$vaxStatus}
+- Medical History: {$healthSummary}
+- Active Vaccinations: {$vaxSummary}
 
-INSTRUCTIONS:
-1. Speak directly to the pet owner using a compassionate, clear veterinary tone. Tailor all advice specifically to {$petName}'s species ({$species}), breed ({$breed}), age ({$age}), weight ({$weight}), and health records.
-2. Structure your reply clearly with helpful markdown headings or bullet points (e.g. Assessment, Causes, Care Recommendations, Safe Foods / Foods to Avoid, Emergency Red Flags).
-3. Focus exclusively on veterinary triage, pet health, nutrition, and behavior for {$petName}. Always address the pet owner directly with compassionate, professional guidance.
-4. If symptoms appear critical or life-threatening (e.g. collapse, seizures, severe bleeding, difficulty breathing, toxic ingestion, or refusal to eat hay leading to GI stasis), urge immediate emergency veterinary hospital attention.
-5. NEVER narrate your internal thinking, conversational planning, or refer to 'the user' in the third person. Start your reply directly with the structured advice.";
+CRITICAL INSTRUCTIONS:
+1. DYNAMIC PET CONTEXT (VERY IMPORTANT):
+- Tailor all advice specifically to {$petName}, who is a {$species} ({$breed}), age {$age}, weight {$weight}.
+- Never assume {$petName} is a dog or cat if {$petName} is a {$species}. For example, if {$petName} is a rabbit, all dietary, symptom, behavioral, and medical advice must strictly follow rabbit physiology (e.g. grass hay as the primary diet, risks of GI stasis, cecotropes, dental wear).
+- Personalize the response addressing the owner and referring directly to {$petName} by name.
+
+2. LANGUAGE RULES:
+- DEFAULT LANGUAGE: SIMPLE ENGLISH. All normal responses must be written in simple, clear, easily understandable English.
+- Use short paragraphs and plain explanations. Avoid complicated medical jargon or explain technical terms in simple English.
+- For all regular questions (even if the user types with casual phrases or Tamil/Tanglish words), respond in simple English.
+- TAMIL MEANING REQUESTS EXCEPTION: Only when the user specifically asks for the Tamil meaning of a word, phrase, or medical term (e.g., 'What is the Tamil meaning of vaccination?'), respond with the Tamil term and explanation in Tamil script (e.g., 'Vaccination என்பதன் தமிழ் பொருள் தடுப்பூசி. இது செல்லப்பிராணிகளை சில தொற்று நோய்களிலிருந்து பாதுகாக்க உதவுகிறது.').
+
+3. CLEAR AND COMPLETE ANSWERS:
+- Give a direct, helpful answer first.
+- Clearly explain the reasons and possible causes.
+- Provide safe, actionable care recommendations using numbered steps or bullet points.
+- Detail when veterinary assistance is required and highlight emergency red-flag symptoms.
+- Never claim a definitive diagnosis without an in-person veterinary examination.
+- Provide a full, complete answer without trailing off.
+
+4. NO INTERNAL THOUGHTS:
+- Never narrate your internal planning or reasoning steps. Output only the final assistant response.";
+
+        if ($lang === 'ta_meaning') {
+            $prompt .= "\n\nTAMIL MEANING REQUEST: The user is specifically asking for the Tamil meaning of a term. Provide the exact Tamil word in Tamil script, explain its definition and importance for pet healthcare in Tamil.";
+        } else {
+            $prompt .= "\n\nLANGUAGE ENFORCEMENT: Write your response exclusively in simple, plain English.";
+        }
 
         if (!empty($searchContext)) {
-            $prompt .= "\n" . $searchContext . "\n";
+            $prompt .= "\n\nVETERINARY REFERENCE CONTEXT:\n" . $searchContext;
         }
 
         return $prompt;
+    }
+
+    /**
+     * Detect whether user input is specifically requesting a Tamil meaning / translation
+     */
+    private function detectLanguage(string $text): string {
+        if (preg_match('/\b(tamil meaning|meaning in tamil|tamil la enna|tamil translation|in tamil|tamil artham|tamil porul|தமிழ் பொருள்|தமிழில் என்ன)\b/iu', $text)) {
+            return 'ta_meaning';
+        }
+        return 'en';
+    }
+
+    /**
+     * Generate a concise ChatGPT-like title from the user's first prompt
+     */
+    private function generateConversationTitle(string $message): string {
+        $clean = preg_replace('/[^\p{L}\p{N}\s]/u', '', $message);
+        $clean = preg_replace('/\s+/', ' ', trim($clean));
+        $words = explode(' ', $clean);
+        if (empty($words) || empty($words[0])) {
+            return 'New Pet Consultation';
+        }
+        $slice = array_slice($words, 0, 6);
+        $title = implode(' ', $slice);
+        if (mb_strlen($title) > 40) {
+            $title = mb_substr($title, 0, 40) . '...';
+        }
+        return mb_convert_case(mb_substr($title, 0, 1), MB_CASE_UPPER, 'UTF-8') . mb_substr($title, 1);
     }
 
     /**
@@ -570,7 +805,7 @@ INSTRUCTIONS:
         $msg = mb_strtolower(trim($message), 'UTF-8');
 
         // Allow polite short conversational openers
-        if (in_array($msg, ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'help', 'start'], true)) {
+        if (in_array($msg, ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening', 'help', 'start', 'vanakkam'], true)) {
             return false;
         }
 
@@ -580,7 +815,7 @@ INSTRUCTIONS:
             return false;
         }
 
-        // Pet, animal, and veterinary vocabulary
+        // Pet, animal, and veterinary vocabulary (English, Tamil, Tanglish)
         $petKeywords = [
             'pet', 'pets', 'dog', 'dogs', 'puppy', 'puppies', 'pup', 'canine', 'hound',
             'cat', 'cats', 'kitten', 'kittens', 'kitty', 'feline',
@@ -591,16 +826,21 @@ INSTRUCTIONS:
             'bark', 'barking', 'meow', 'meowing', 'purr', 'purring', 'tail', 'paws', 'fur', 'coat', 'claws', 'whiskers',
             'leash', 'collar', 'harness', 'litter', 'crate', 'kennel',
             'kibble', 'dog food', 'cat food', 'pet food', 'treats', 'chew', 'feeding', 'meal',
-            'flea', 'fleas', 'tick', 'ticks', 'worm', 'worms', 'deworm', 'rabies', 'parvo', 'distemper', 'vaccin',
+            'flea', 'fleas', 'tick', 'ticks', 'worm', 'worms', 'deworm', 'rabies', 'parvo', 'distemper', 'vaccin', 'vaccination',
             'shedding', 'groom', 'grooming', 'neuter', 'neutering', 'spay', 'spaying',
             'vomit', 'vomiting', 'diarrhea', 'letharg', 'limp', 'limping', 'scratch', 'scratching',
             'itch', 'itching', 'drool', 'drooling', 'pant', 'panting', 'dehydrat', 'hair loss', 'losing hair',
             'breed', 'pedigree', 'species', 'litterbox', 'potty', 'training', 'bite', 'biting',
-            'safe food', 'toxic food', 'can eat', 'cannot eat', 'choke', 'choking', 'swallowed', 'ear infection'
+            'safe food', 'toxic food', 'can eat', 'cannot eat', 'choke', 'choking', 'swallowed', 'ear infection',
+            'hay', 'timothy hay', 'pellets', 'eating', 'appetite', 'not eating', 'droppings', 'teeth', 'dental', 'stasis', 'gi stasis',
+            // Tamil script keywords
+            'நாய்', 'நாய்க்கு', 'பூனை', 'பூனைக்கு', 'கிளி', 'பறவை', 'முயல்', 'உணவு', 'சாப்பாடு', 'தடுப்பூசி', 'மருந்து', 'வாந்தி', 'செல்லப்பிராணி', 'செல்லப்பிராணிகள்', 'காய்ச்சல்', 'நோய்', 'பராமரிப்பு',
+            // Tanglish keywords
+            'naai', 'poonai', 'kutti', 'kudukalam', 'kudukkalam', 'sapadu', 'saapadu', 'thaduppoosi', 'udambu', 'panradhu', 'pannalam'
         ];
 
         foreach ($petKeywords as $kw) {
-            if (preg_match('/\b' . preg_quote($kw, '/') . '\b/i', $msg)) {
+            if (mb_strpos($msg, $kw) !== false) {
                 return false;
             }
         }
@@ -655,9 +895,10 @@ INSTRUCTIONS:
             return false;
         }
         $lower = mb_strtolower($trimmed, 'UTF-8');
-        if (str_contains($lower, "i'm a pet care assistant") || 
+        if (str_contains($lower, "i'm your pet care ai assistant") ||
+            str_contains($lower, "i'm a pet care assistant") || 
             str_contains($lower, "i am a pet care assistant") ||
-            (str_contains($lower, "pet care assistant") && (str_contains($lower, "only") || str_contains($lower, "cannot")))) {
+            (str_contains($lower, "pet care") && (str_contains($lower, "only") || str_contains($lower, "cannot")))) {
             return true;
         }
         return false;
@@ -675,26 +916,33 @@ INSTRUCTIONS:
         return false;
     }
 
-    private function getRecentConversationHistory(PDO $pdo, int $userId, ?int $petId, int $limit): array {
-        $sql = 'SELECT sender, message FROM chat_messages WHERE user_id = :uid';
-        $params = [':uid' => $userId];
-        if ($petId !== null) {
-            $sql .= ' AND (pet_id = :pid OR pet_id IS NULL)';
-            $params[':pid'] = $petId;
+    private function getRecentConversationHistory(PDO $pdo, int $userId, ?int $petId, int $limit, ?int $conversationId = null): array {
+        if ($conversationId !== null) {
+            $sql = 'SELECT sender, message FROM chat_messages WHERE user_id = :uid AND conversation_id = :cid ORDER BY id DESC LIMIT ' . $limit;
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([':uid' => $userId, ':cid' => $conversationId]);
+        } else {
+            $sql = 'SELECT sender, message FROM chat_messages WHERE user_id = :uid';
+            $params = [':uid' => $userId];
+            if ($petId !== null) {
+                $sql .= ' AND (pet_id = :pid OR pet_id IS NULL)';
+                $params[':pid'] = $petId;
+            }
+            $sql .= ' ORDER BY id DESC LIMIT ' . $limit;
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
         }
-        $sql .= ' ORDER BY id DESC LIMIT ' . $limit;
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         return array_reverse($rows);
     }
 
     private function saveMessageToDb(PDO $pdo, array $data): int {
         $stmt = $pdo->prepare('
-            INSERT INTO chat_messages (user_id, pet_id, sender, message, image_url, message_type, sources, analysis_metadata, created_at)
-            VALUES (:uid, :pid, :sender, :msg, :img, :mtype, :sources, :meta, NOW())
+            INSERT INTO chat_messages (conversation_id, user_id, pet_id, sender, message, image_url, message_type, sources, analysis_metadata, created_at)
+            VALUES (:cid, :uid, :pid, :sender, :msg, :img, :mtype, :sources, :meta, NOW())
         ');
         $stmt->execute([
+            ':cid' => $data['conversation_id'] ?? null,
             ':uid' => $data['user_id'],
             ':pid' => $data['pet_id'] ?? null,
             ':sender' => $data['sender'],

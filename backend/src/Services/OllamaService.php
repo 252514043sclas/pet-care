@@ -88,7 +88,7 @@ class OllamaService {
             'num_gpu' => $this->numGpu,
             'num_thread' => $this->numThreads,
             'num_ctx' => 2048,
-            'num_predict' => 650,
+            'num_predict' => 850,
             'temperature' => 0.1,
             'repeat_penalty' => 1.15,
             'top_p' => 0.9,
@@ -142,6 +142,9 @@ class OllamaService {
 
         // Remove raw thinking blocks if emitted inside content
         if (!empty($content)) {
+            if (strpos($content, '</think>') !== false) {
+                $content = substr($content, strpos($content, '</think>') + 8);
+            }
             $content = preg_replace('/<think>.*?<\/think>/is', '', $content);
             $content = preg_replace('/^(?:(?:The user|First,?\s*(?:I need|let\'s)|Now,?\s*let\'s|Wait|From the dossier|Let me|Okay|As a|I need to|I will|I should)[^\n]*\n*)+/is', '', trim($content));
             $content = trim($content);
@@ -260,6 +263,9 @@ You MUST structure your response strictly in the following format:
 
         // Remove raw thinking blocks if emitted inside content
         if (!empty($content)) {
+            if (strpos($content, '</think>') !== false) {
+                $content = substr($content, strpos($content, '</think>') + 8);
+            }
             $content = preg_replace('/<think>.*?<\/think>/is', '', $content);
             // Remove leading third-person narrator internal monologue if emitted
             $content = preg_replace('/^(?:(?:The user|First,?\s*I need|Wait|From the dossier|Let me|Okay|As a|I need to|I will|I should)[^\n]*\n*)+/is', '', trim($content));

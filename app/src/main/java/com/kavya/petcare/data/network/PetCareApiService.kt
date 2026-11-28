@@ -328,6 +328,24 @@ interface PetCareApiService {
     // ----------------------------------------------------
     // AI Chatbot & Multimodal Vision (Qwen3-VL 2B)
     // ----------------------------------------------------
+    @GET("chat/conversations")
+    suspend fun getChatConversations(): Response<ApiResponse<List<ChatConversationDto>>>
+
+    @POST("chat/conversations")
+    suspend fun createChatConversation(
+        @Body request: CreateConversationRequest
+    ): Response<ApiResponse<ChatConversationDto>>
+
+    @GET("chat/conversations/{id}")
+    suspend fun getChatConversationDetails(
+        @Path("id") id: Int
+    ): Response<ApiResponse<ChatConversationDto>>
+
+    @DELETE("chat/conversations/{id}")
+    suspend fun deleteChatConversation(
+        @Path("id") id: Int
+    ): Response<ApiResponse<Map<String, Any>>>
+
     @POST("chat")
     suspend fun sendChatMessage(
         @Body request: ChatRequest

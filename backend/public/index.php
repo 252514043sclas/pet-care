@@ -332,6 +332,22 @@ try {
     // ------------------------------------------------------------------------
     // AI Chatbot, Multimodal Vision, Nutrition & Search (Qwen3-VL 2B)
     // ------------------------------------------------------------------------
+    if ($requestMethod === 'GET' && $uri === '/api/chat/conversations') {
+        (new ChatController())->conversations($user);
+    }
+
+    if ($requestMethod === 'POST' && $uri === '/api/chat/conversations') {
+        (new ChatController())->createConversation($user, $input);
+    }
+
+    if ($requestMethod === 'GET' && preg_match('#^/api/chat/conversations/(\d+)$#', $uri, $matches)) {
+        (new ChatController())->getConversation($user, (int)$matches[1]);
+    }
+
+    if ($requestMethod === 'DELETE' && preg_match('#^/api/chat/conversations/(\d+)$#', $uri, $matches)) {
+        (new ChatController())->deleteConversation($user, (int)$matches[1]);
+    }
+
     if ($requestMethod === 'POST' && $uri === '/api/chat') {
         (new ChatController())->chat($user, $input);
     }

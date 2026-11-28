@@ -483,10 +483,31 @@ data class VaccinationOverviewDto(
 // ----------------------------------------------------
 // AI Pet Care Chatbot & Multimodal Vision (Qwen3-VL 2B)
 // ----------------------------------------------------
+data class ChatConversationDto(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("user_id") val userId: Int = 0,
+    @SerializedName("pet_id") val petId: Int? = null,
+    @SerializedName("title") val title: String = "New Chat",
+    @SerializedName("language") val language: String = "en",
+    @SerializedName("message_count") val messageCount: Int = 0,
+    @SerializedName("last_message") val lastMessage: String? = null,
+    @SerializedName("last_message_at") val lastMessageAt: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null,
+    @SerializedName("messages") val messages: List<ChatMessageDto> = emptyList()
+)
+
+data class CreateConversationRequest(
+    @SerializedName("title") val title: String? = null,
+    @SerializedName("pet_id") val petId: Int? = null,
+    @SerializedName("language") val language: String = "en"
+)
+
 data class ChatRequest(
     @SerializedName("message") val message: String,
     @SerializedName("pet_id") val petId: Int? = null,
-    @SerializedName("enable_search") val enableSearch: Boolean = true
+    @SerializedName("enable_search") val enableSearch: Boolean = true,
+    @SerializedName("conversation_id") val conversationId: Int? = null
 )
 
 data class SearchSourceDto(
@@ -511,6 +532,8 @@ data class ChatResponseDto(
     @SerializedName("message") val message: String,
     @SerializedName("message_id") val messageId: Int? = null,
     @SerializedName("user_message_id") val userMessageId: Int? = null,
+    @SerializedName("conversation_id") val conversationId: Int? = null,
+    @SerializedName("conversation_title") val conversationTitle: String? = null,
     @SerializedName("sender") val sender: String = "assistant",
     @SerializedName("sources") val sources: List<SearchSourceDto> = emptyList(),
     @SerializedName("model") val model: String? = null,
@@ -521,13 +544,15 @@ data class ChatResponseDto(
 data class ChatImageRequest(
     @SerializedName("image") val imageBase64: String,
     @SerializedName("prompt") val prompt: String = "",
-    @SerializedName("pet_id") val petId: Int? = null
+    @SerializedName("pet_id") val petId: Int? = null,
+    @SerializedName("conversation_id") val conversationId: Int? = null
 )
 
 data class ChatImageResponseDto(
     @SerializedName("message") val message: String,
     @SerializedName("message_id") val messageId: Int? = null,
     @SerializedName("image_url") val imageUrl: String? = null,
+    @SerializedName("conversation_id") val conversationId: Int? = null,
     @SerializedName("metadata") val metadata: VisionMetadataDto? = null,
     @SerializedName("model") val model: String? = null,
     @SerializedName("elapsed_seconds") val elapsedSeconds: Double? = null,
@@ -536,6 +561,7 @@ data class ChatImageResponseDto(
 
 data class ChatMessageDto(
     @SerializedName("id") val id: Int = 0,
+    @SerializedName("conversation_id") val conversationId: Int? = null,
     @SerializedName("user_id") val userId: Int = 0,
     @SerializedName("pet_id") val petId: Int? = null,
     @SerializedName("sender") val sender: String = "user", // "user" or "assistant"

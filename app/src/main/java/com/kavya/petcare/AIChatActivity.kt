@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kavya.petcare.data.models.ChatConversationDto
 import com.kavya.petcare.data.models.ChatMessageDto
 import com.kavya.petcare.data.models.PetDto
 import com.kavya.petcare.data.models.SearchSourceDto
@@ -82,14 +83,34 @@ fun AIChatScreen(
     val listState = rememberLazyListState()
 
     val messages by viewModel.messages.collectAsState()
+    val conversations by viewModel.conversations.collectAsState()
+    val activeConversation by viewModel.activeConversation.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val selectedImageBitmap by viewModel.selectedImageBitmap.collectAsState()
     val activePet by viewModel.activePet.collectAsState()
+    val userPets by viewModel.userPets.collectAsState()
     val systemHealth by viewModel.systemHealth.collectAsState()
 
     var textInput by remember { mutableStateOf("") }
+    var showHistorySheet by remember { mutableStateOf(false) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
+    var showPetPickerDialog by remember { mutableStateOf(false) }
+    var conversationToDelete by remember { mutableStateOf<ChatConversationDto?>(null) }
+
+    // Re-check active pet on resume in case user switched pet in another screen
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadActivePet()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Camera launcher
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -122,6 +143,7 @@ fun AIChatScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadActivePet()
+        viewModel.loadConversations()
     }
 
     // Auto-scroll to bottom on new messages
@@ -131,11 +153,12 @@ fun AIChatScreen(
         }
     }
 
+    // Clear Chat Confirmation Dialog
     if (showClearConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
-            title = { Text("Clear Chat History?", fontWeight = FontWeight.Bold, color = EmeraldDark) },
-            text = { Text("This will permanently remove all messages and analyzed images from your device and database.", color = TextSecondary) },
+            title = { Text("Clear Current Chat?", fontWeight = FontWeight.Bold, color = EmeraldDark) },
+            text = { Text("This will permanently remove all messages and analyzed images from this session.", color = TextSecondary) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -145,7 +168,7 @@ fun AIChatScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = AlertRose),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Clear All", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Clear", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -159,6 +182,231 @@ fun AIChatScreen(
             containerColor = WarmPearl,
             shape = RoundedCornerShape(20.dp)
         )
+    }
+
+    // Delete Specific Conversation Confirmation Dialog
+    if (conversationToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { conversationToDelete = null },
+            title = { Text("Delete Conversation?", fontWeight = FontWeight.Bold, color = EmeraldDark) },
+            text = { Text("Are you sure you want to delete '${conversationToDelete?.title}'? This action cannot be undone.", color = TextSecondary) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val id = conversationToDelete?.id
+                        conversationToDelete = null
+                        if (id != null) {
+                            viewModel.deleteConversation(id)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AlertRose),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { conversationToDelete = null },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel", color = EmeraldDark)
+                }
+            },
+            containerColor = WarmPearl,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Switch Pet Dialog (when user has multiple pets)
+    if (showPetPickerDialog && userPets.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showPetPickerDialog = false },
+            title = { Text("Select Pet for AI Care", fontWeight = FontWeight.Bold, color = EmeraldDark) },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    userPets.forEach { petItem ->
+                        val isCurrent = activePet?.id == petItem.id
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.selectPet(petItem)
+                                    showPetPickerDialog = false
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isCurrent) MintSoft else SoftBackground,
+                            border = BorderStroke(1.dp, if (isCurrent) MintSage else BorderSubtle)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(MintSoft),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (!petItem.imageUrl.isNullOrBlank()) {
+                                        ChatNetworkImage(imageUrl = petItem.imageUrl, modifier = Modifier.fillMaxSize())
+                                    } else {
+                                        Icon(Icons.Default.Pets, contentDescription = null, tint = MintSage, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(petItem.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = EmeraldDark)
+                                    Text("${petItem.species} • ${petItem.breed} • ${petItem.ageYears}", fontSize = 11.5.sp, color = TextSecondary)
+                                }
+                                if (isCurrent) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = "Active", tint = MintSage, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPetPickerDialog = false }) {
+                    Text("Close", color = EmeraldDark)
+                }
+            },
+            containerColor = WarmPearl,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // Chat History BottomSheet
+    if (showHistorySheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showHistorySheet = false },
+            containerColor = WarmPearl,
+            dragHandle = { BottomSheetDefaults.DragHandle() },
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.History, contentDescription = null, tint = EmeraldDark, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Chat History", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = EmeraldDark)
+                    }
+
+                    // Start New Chat Button
+                    Button(
+                        onClick = {
+                            viewModel.startNewChat()
+                            showHistorySheet = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MintSage),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("New Chat", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                if (conversations.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.ChatBubbleOutline, contentDescription = null, tint = TextMuted, modifier = Modifier.size(40.dp))
+                            Spacer(Modifier.height(8.dp))
+                            Text("No chat history yet", fontWeight = FontWeight.SemiBold, color = TextSecondary)
+                            Text("Your past conversations will appear here.", fontSize = 12.sp, color = TextMuted)
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 420.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 24.dp)
+                    ) {
+                        items(conversations, key = { it.id }) { conv ->
+                            val isSelected = activeConversation?.id == conv.id
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.selectConversation(conv)
+                                        showHistorySheet = false
+                                    },
+                                shape = RoundedCornerShape(14.dp),
+                                color = if (isSelected) MintSoft else SoftBackground,
+                                border = BorderStroke(1.dp, if (isSelected) MintSage else BorderSubtle)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = conv.title.ifBlank { "Pet Care Chat" },
+                                            fontSize = 14.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                                            color = EmeraldDark,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        if (!conv.lastMessage.isNullOrBlank()) {
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                text = conv.lastMessage,
+                                                fontSize = 11.5.sp,
+                                                color = TextSecondary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        Spacer(Modifier.height(3.dp))
+                                        Text(
+                                            text = "${conv.messageCount} messages • ${conv.updatedAt?.take(16) ?: conv.createdAt?.take(16) ?: ""}",
+                                            fontSize = 10.sp,
+                                            color = TextMuted
+                                        )
+                                    }
+
+                                    IconButton(
+                                        onClick = { conversationToDelete = conv }
+                                    ) {
+                                        Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = AlertRose, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -178,17 +426,20 @@ fun AIChatScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = EmeraldDark)
                         }
 
-                        Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(2.dp))
 
                         // Pet avatar
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(38.dp)
                                 .clip(CircleShape)
                                 .background(MintSoft),
                             contentAlignment = Alignment.Center
@@ -205,17 +456,17 @@ fun AIChatScreen(
                             }
                         }
 
-                        Spacer(Modifier.width(10.dp))
+                        Spacer(Modifier.width(8.dp))
 
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "PetCare AI Assistant",
-                                    fontSize = 16.sp,
+                                    text = "PetCare AI",
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = EmeraldDark
                                 )
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(5.dp))
                                 Box(
                                     modifier = Modifier
                                         .size(7.dp)
@@ -223,18 +474,38 @@ fun AIChatScreen(
                                         .background(if (systemHealth?.aiService?.modelLoaded == true) Color(0xFF10B981) else Color(0xFFF59E0B))
                                 )
                             }
-                            val modelLabel = if (systemHealth?.aiService?.modelLoaded == true) "Qwen3-VL 2B (Local CPU)" else "Qwen3-VL 2B • Ready"
+                            val sessionSubtitle = activeConversation?.title ?: "New Chat • Qwen3-VL 2B"
                             Text(
-                                text = modelLabel,
+                                text = sessionSubtitle,
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = TextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // New Chat Button
+                        IconButton(
+                            onClick = { viewModel.startNewChat() }
+                        ) {
+                            Icon(Icons.Default.AddComment, contentDescription = "New Chat", tint = EmeraldDark)
+                        }
+
+                        // History Drawer Button
+                        IconButton(
+                            onClick = {
+                                viewModel.loadConversations()
+                                showHistorySheet = true
+                            }
+                        ) {
+                            Icon(Icons.Default.History, contentDescription = "Chat History", tint = EmeraldDark)
+                        }
+
+                        // Clear current messages
                         IconButton(onClick = { showClearConfirmDialog = true }) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "Clear History", tint = TextMuted)
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Clear Session", tint = TextMuted)
                         }
                     }
                 }
@@ -248,7 +519,11 @@ fun AIChatScreen(
                 .padding(innerPadding)
         ) {
             // Active Connected Pet Profile Banner
-            ActivePetHeader(pet = activePet)
+            ActivePetHeader(
+                pet = activePet,
+                hasMultiplePets = userPets.size > 1,
+                onSwitchPet = { showPetPickerDialog = true }
+            )
 
             // Error banner if any
             AnimatedVisibility(visible = errorMessage != null) {
@@ -283,30 +558,39 @@ fun AIChatScreen(
                 }
             }
 
-            // Chat Messages List
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                contentPadding = PaddingValues(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                items(messages, key = { it.id }) { msg ->
-                    ChatMessageBubble(msg = msg, onOpenUrl = { url ->
-                        try {
-                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(browserIntent)
-                        } catch (e: Exception) {
-                            // ignore url open error
-                        }
-                    })
-                }
+            // Chat Messages List or Clean Welcome Empty View (No Suggested Questions)
+            if (messages.isEmpty()) {
+                WelcomeEmptyView(
+                    pet = activePet,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                )
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    items(messages, key = { it.id }) { msg ->
+                        ChatMessageBubble(msg = msg, onOpenUrl = { url ->
+                            try {
+                                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                context.startActivity(browserIntent)
+                            } catch (e: Exception) {
+                                // ignore url open error
+                            }
+                        })
+                    }
 
-                if (isLoading) {
-                    item {
-                        AITypingIndicator(petName = activePet?.name ?: "your pet")
+                    if (isLoading) {
+                        item {
+                            AITypingIndicator(petName = activePet?.name ?: "your pet")
+                        }
                     }
                 }
             }
@@ -407,7 +691,7 @@ fun AIChatScreen(
                             Text(
                                 text = if (isLoading) "Waiting for AI response..."
                                 else if (selectedImageBitmap != null) "Add notes for visual scan..."
-                                else "Ask questions about ${activePet?.name ?: "your pet"}...",
+                                else "Ask about ${activePet?.name ?: "your pet"} in simple English...",
                                 fontSize = 13.sp,
                                 color = TextMuted
                             )
@@ -461,6 +745,59 @@ fun AIChatScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun WelcomeEmptyView(
+    pet: PetDto?,
+    modifier: Modifier = Modifier
+) {
+    val petName = pet?.name ?: "your pet"
+    Box(
+        modifier = modifier
+            .padding(24.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(MintSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    tint = MintSage,
+                    modifier = Modifier.size(38.dp)
+                )
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            Text(
+                text = "Hello! How can I help you take care of $petName today?",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = EmeraldDark,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 24.sp
+            )
+
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "Ask any questions about ${petName}'s diet, health, symptoms, or care in simple English.",
+                fontSize = 13.sp,
+                color = TextSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
         }
     }
 }
@@ -671,11 +1008,16 @@ fun SearchSourceChip(
 }
 
 @Composable
-fun ActivePetHeader(pet: PetDto?) {
+fun ActivePetHeader(
+    pet: PetDto?,
+    hasMultiplePets: Boolean = false,
+    onSwitchPet: () -> Unit = {}
+) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .clickable(enabled = hasMultiplePets) { onSwitchPet() },
         shape = RoundedCornerShape(14.dp),
         color = WarmPearl,
         border = BorderStroke(1.dp, MintSage.copy(alpha = 0.3f)),
@@ -749,6 +1091,32 @@ fun ActivePetHeader(pet: PetDto?) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            if (hasMultiplePets) {
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = MintSoft
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.SwapHoriz,
+                            contentDescription = "Switch Pet",
+                            tint = EmeraldDark,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(3.dp))
+                        Text(
+                            text = "Switch",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = EmeraldDark
+                        )
+                    }
+                }
             }
         }
     }

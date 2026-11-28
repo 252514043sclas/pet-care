@@ -1024,13 +1024,81 @@ class PetCareRepository(private val context: Context) {
     // ----------------------------------------------------
     // AI Chatbot & Multimodal Vision (Qwen3-VL 2B)
     // ----------------------------------------------------
+    suspend fun getChatConversations(): Result<List<ChatConversationDto>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getChatConversations()
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Could not load chat conversations")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun createChatConversation(
+        title: String? = null,
+        petId: Int? = null,
+        language: String = "en"
+    ): Result<ChatConversationDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.createChatConversation(CreateConversationRequest(title = title, petId = petId, language = language))
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Could not create conversation")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun getChatConversationDetails(id: Int): Result<ChatConversationDto> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.getChatConversationDetails(id)
+            if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
+                Result.success(response.body()!!.data!!)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Could not load conversation")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
+    suspend fun deleteChatConversation(id: Int): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.deleteChatConversation(id)
+            if (response.isSuccessful && response.body()?.success == true) {
+                Result.success(Unit)
+            } else {
+                val errorMsg = parseErrorMessage(response, "Could not delete conversation")
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception(formatNetworkError(e)))
+        }
+    }
+
     suspend fun sendChatMessage(
         message: String,
         petId: Int?,
-        enableSearch: Boolean = true
+        enableSearch: Boolean = true,
+        conversationId: Int? = null
     ): Result<ChatResponseDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.sendChatMessage(ChatRequest(message = message, petId = petId, enableSearch = enableSearch))
+            val response = api.sendChatMessage(
+                ChatRequest(
+                    message = message,
+                    petId = petId,
+                    enableSearch = enableSearch,
+                    conversationId = conversationId
+                )
+            )
             if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
                 Result.success(response.body()!!.data!!)
             } else {
@@ -1045,10 +1113,18 @@ class PetCareRepository(private val context: Context) {
     suspend fun sendChatImage(
         imageBase64: String,
         prompt: String,
-        petId: Int?
+        petId: Int?,
+        conversationId: Int? = null
     ): Result<ChatImageResponseDto> = withContext(Dispatchers.IO) {
         try {
-            val response = api.sendChatImageAnalysis(ChatImageRequest(imageBase64 = imageBase64, prompt = prompt, petId = petId))
+            val response = api.sendChatImageAnalysis(
+                ChatImageRequest(
+                    imageBase64 = imageBase64,
+                    prompt = prompt,
+                    petId = petId,
+                    conversationId = conversationId
+                )
+            )
             if (response.isSuccessful && response.body()?.success == true && response.body()?.data != null) {
                 Result.success(response.body()!!.data!!)
             } else {
